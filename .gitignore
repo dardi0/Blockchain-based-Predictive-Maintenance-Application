@@ -1,0 +1,120 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Hardhat
+cache/
+artifacts/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dataset ve Model dosyaları (çok büyük)
+*.csv
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+models/
+*.model
+
+# Görsel dosyalar
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+
+# IDE ve Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# İşletim Sistemi
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Blockchain
+ganache-cli.db
+*.db
+*.log
+
+# ZK-SNARK Compiled Files
+bc/circuits/build/
+bc/circuits/node_modules/
+bc/circuits/package-lock.json
+bc/circuits/circom.exe
+*.zkey
+*.ptau
+*.r1cs
+*.sym
+*_js/
+
+# Geçici dosyalar
+*.tmp
+*.temp
+test_*.py
+debug_*.py
+
+# Büyük analiz dizinleri
+ai4i2020/
+NASA Turbofan/
+turbofan/
+ysa - kongre/
+
+# Hardhat deployment
+ignition/deployments/
+
+# Private key'ler ve hassas bilgiler
+private_keys.json
+secrets.json
+.secret
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# ZK-SNARK Circuit dosyaları ekle
+git add bc/circuits/pdm_verification.circom
+git add bc/circuits/model_verification.circom
+git add bc/circuits/package.json
+git add bc/circuits/setup_zk_simple.js

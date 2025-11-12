@@ -20,7 +20,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Hardhat
 cache/
@@ -67,7 +66,7 @@ Thumbs.db
 desktop.ini
 
 # Blockchain
-ganache-cli.db
+# Removed ganache references
 *.db
 *.log
 
@@ -113,8 +112,31 @@ secrets.json
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
 
-# ZK-SNARK Circuit dosyaları ekle
-git add bc/circuits/pdm_verification.circom
-git add bc/circuits/model_verification.circom
-git add bc/circuits/package.json
-git add bc/circuits/setup_zk_simple.js
+# ZK cache/deployment çıktıları
+artifacts-zk/
+cache-zk/
+deployments-zk/
+ignition/deployments/
+temp/
+
+# Yerel kurulum/config dosyaları
+.env.*
+deployment_data_zksync_cli_*.json
+deployment_info_hybrid_ZKSYNC_ERA.json
+deployment_fees_zksync.json
+zksync_era_deployment_info.json
+
+# Veritabanları
+pdm_hybrid_storage.db
+test_pdm.db
+*.db-journal
+
+# Geçici ve binary dosyalar
+bytes.bin
+temp_find.txt
+failure.txt
+*.bin
+
+# Trusted setup dosyaları (çok büyük)
+powersOfTau*.ptau
+*.ptau

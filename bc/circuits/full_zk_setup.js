@@ -337,9 +337,9 @@ function generateProductionInput() {
 async function generateDeploymentScripts() {
     console.log("📝 Deployment scripts oluşturuluyor...");
     
-    // Ganache deployment script
-    const ganacheScript = generateGanacheDeployment();
-    fs.writeFileSync(`${BUILD_DIR}/deploy_ganache.js`, ganacheScript);
+    // Local Hardhat deployment script
+    const localScript = generateLocalDeployment();
+    fs.writeFileSync(`${BUILD_DIR}/deploy_local.js`, localScript);
     
     // Production interaction script  
     const interactionScript = generateInteractionScript();
@@ -348,27 +348,27 @@ async function generateDeploymentScripts() {
     console.log("✅ Deployment scripts oluşturuldu");
 }
 
-function generateGanacheDeployment() {
+function generateLocalDeployment() {
     return `#!/usr/bin/env node
 
 /*
-Ganache Deployment Script - PDM Production ZK System
+Local Hardhat Deployment Script - PDM Production ZK System
 */
 
 const Web3 = require('web3');
 const fs = require('fs');
 
-const GANACHE_URL = 'http://127.0.0.1:7545';
+const LOCAL_RPC_URL = 'http://127.0.0.1:8545';
 
-async function deployToGanache() {
-    console.log('🚀 PDM Production ZK System Deployment başlıyor...');
+async function deployToLocal() {
+    console.log('🚀 PDM Production ZK System Local Deployment başlıyor...');
     
     try {
         // Web3 bağlantısı
-        const web3 = new Web3(GANACHE_URL);
+        const web3 = new Web3(LOCAL_RPC_URL);
         const accounts = await web3.eth.getAccounts();
         
-        console.log(\`📡 Ganache'ye bağlandı: \${GANACHE_URL}\`);
+        console.log(\`📡 Local Hardhat'e bağlandı: \${LOCAL_RPC_URL}\`);
         console.log(\`👤 Deployer account: \${accounts[0]}\`);
         
         // Verifier contract bytecode
@@ -391,8 +391,8 @@ async function deployToGanache() {
         };
         
         console.log('✅ Deployment transaction hazırlandı');
-        console.log('💡 Gerçek deployment için Solidity compiler gerekli');
-        console.log('💡 Hardhat veya Truffle kullanın');
+        console.log('💡 Gerçek deployment için Hardhat ignition kullanın');
+        console.log('💡 npx hardhat ignition deploy ignition/modules/Deploy.js');
         
         return true;
         
@@ -403,10 +403,10 @@ async function deployToGanache() {
 }
 
 if (require.main === module) {
-    deployToGanache();
+    deployToLocal();
 }
 
-module.exports = { deployToGanache };
+module.exports = { deployToLocal };
 `;
 }
 
@@ -426,7 +426,7 @@ class PDMProductionClient {
         this.account = null;
     }
     
-    async connect(provider = 'http://127.0.0.1:7545') {
+    async connect(provider = 'http://127.0.0.1:8545') {
         console.log(\`🌐 Connecting to \${provider}...\`);
         
         // Web3 connection (requires npm install web3)
@@ -543,12 +543,12 @@ function printSystemInfo() {
     console.log(`   🔑 ${BUILD_DIR}/pdm_verification_final.zkey`);
     console.log(`   📜 ${BUILD_DIR}/PDMVerifierProduction.sol`);
     console.log(`   🧪 ${BUILD_DIR}/production_proof.json`);
-    console.log(`   🚀 ${BUILD_DIR}/deploy_ganache.js`);
+    console.log(`   🚀 ${BUILD_DIR}/deploy_local.js`);
     console.log(`   🔗 ${BUILD_DIR}/interact_production.js`);
     
     console.log("\\n🚀 NEXT STEPS:");
     console.log("   1. npm install web3 - Blockchain interaction");
-    console.log("   2. node build/deploy_ganache.js - Deploy to Ganache");
+    console.log("   2. node build/deploy_local.js - Deploy to Local Hardhat");
     console.log("   3. node build/interact_production.js - Test system");
     console.log("   4. Deploy to mainnet for production use");
     

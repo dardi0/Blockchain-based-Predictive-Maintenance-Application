@@ -1,0 +1,47 @@
+{
+  "network": "ZKSYNC_ERA",
+  "deployer": "0xE81eC6620856e62B4e1E04A1Fc9199f4293ed42f",
+  "timestamp": "2025-09-30T17:50:06.535Z",
+  "deployment_time_seconds": 31.751,
+  "system_type": "hybrid",
+  "features": {
+    "offChainStorage": true,
+    "zkProofs": true,
+    "accessControl": true,
+    "gasOptimized": true
+  },
+  "contracts": {
+    "AccessControlRegistry": {
+      "name": "AccessControlRegistry",
+      "address": "0xA813ddc2bFFa049E64884DeF89cE425924E80052"
+    },
+    "UnifiedGroth16Verifier": {
+      "name": "UnifiedGroth16Verifier",
+      "address": "0x4D680F2C3A391c2c4b63d940074171322078232E"
+    },
+    "PdMSystemHybrid": {
+      "name": "PdMSystemHybrid",
+      "address": "0x6e4d0795E6340d5E9D9dFAf2e64C3B407645d06e",
+      "dependencies": {
+        "accessRegistry": "0xA813ddc2bFFa049E64884DeF89cE425924E80052",
+        "zkVerifier": "0x4D680F2C3A391c2c4b63d940074171322078232E"
+      },
+      "adapters": {
+        "sensor": "0xFdf7674aDb1227bA594E17c183a3A83d93F15206",
+        "prediction": "0x74f865e1F10e2Ea1fB5C2571A5Ffeb13A29f13FB"
+      }
+    },
+    "SensorVerifierAdapter": {
+      "name": "SensorVerifierAdapter",
+      "address": "0xFdf7674aDb1227bA594E17c183a3A83d93F15206"
+    },
+    "PredictionVerifierAdapter": {
+      "name": "PredictionVerifierAdapter",
+      "address": "0x74f865e1F10e2Ea1fB5C2571A5Ffeb13A29f13FB"
+    },
+    "SensorVerifierAdapter3": {
+      "name": "SensorVerifierAdapter3",
+      "address": "0x7E578B41Afc0e6cE240987a33d39037204D15d29"
+    }
+  }
+}

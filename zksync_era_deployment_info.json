@@ -1,0 +1,67 @@
+{
+  "deployment_time": "2025-01-13T18:30:00.000Z",
+  "deployer_address": "0xE81eC6620856e62B4e1E04A1Fc9199f4293ed42f",
+  "network": {
+    "name": "zkSync Era Sepolia",
+    "chain_id": 300,
+    "rpc_url": "https://sepolia.era.zksync.dev",
+    "explorer": "https://sepolia.explorer.zksync.io"
+  },
+  "contracts": {
+    "AccessControlRegistry": {
+      "address": "0xc07Fc05fF357A324A366e336386165A9bc9b9346",
+      "contract_name": "AccessControlRegistry",
+      "deployment_order": 1,
+      "description": "Merkezi yetki yönetimi - Node kayıt/silme",
+      "purpose": "Access control and node management"
+    },
+    "OptimizedGroth16Verifier": {
+      "address": "0xF9929F42824C8687E745465493A8C10fe9017a19",
+      "contract_name": "OptimizedGroth16Verifier",
+      "deployment_order": 2,
+      "description": "ZK-SNARK proof doğrulama motoru",
+      "purpose": "ZK-SNARK proof verification for sensor data"
+    },
+    "PdMSystemHybrid": {
+      "address": "0xB3D1AEe058703b1272EF5Cf9a305EC80c740CD5A",
+      "contract_name": "PdMSystemHybrid",
+      "deployment_order": 3,
+      "description": "Ana hibrit PDM sistemi - Off-chain storage + ZK proofs",
+      "purpose": "Main hybrid PDM system with off-chain storage and ZK proofs",
+      "dependencies": {
+        "accessRegistry": "0xc07Fc05fF357A324A366e336386165A9bc9b9346",
+        "zkVerifier": "0xF9929F42824C8687E745465493A8C10fe9017a19"
+      }
+    }
+  },
+  "features": {
+    "reentrancy_guard": true,
+    "pausable": true,
+    "ownable": true,
+    "zk_verification": true,
+    "hybrid_storage": true,
+    "off_chain_storage": true,
+    "access_control": true,
+    "gas_optimized": true,
+    "zkevm_compatibility": true,
+    "account_abstraction": true
+  },
+  "zksync_specific_features": {
+    "native_aa_support": true,
+    "paymaster_compatibility": true,
+    "l1_l2_messaging": true,
+    "cheap_storage": true,
+    "fast_finality": true,
+    "eip712_transactions": true,
+    "native_zk_proofs": true
+  },
+  "system_info": {
+    "system_type": "hybrid",
+    "storage_type": "off-chain + on-chain proofs",
+    "proof_system": "Groth16 ZK-SNARKs",
+    "data_availability": "off-chain with cryptographic commitments"
+  },
+  "openzeppelin_version": "4.9.6",
+  "solidity_version": "0.8.20",
+  "zksolc_version": "1.4.1"
+}

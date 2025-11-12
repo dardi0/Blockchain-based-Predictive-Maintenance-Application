@@ -81,7 +81,7 @@ async function simpleSetup() {
         console.log("\n💡 Sonraki adımlar:");
         console.log("   1. node build/simple_proof.js - Test proof oluştur");
         console.log("   2. npm install web3 - Blockchain entegrasyonu için");
-        console.log("   3. Ganache veya test ağında dene");
+        console.log("   3. Hardhat local network'te test et");
         
         return true;
         
@@ -164,10 +164,10 @@ class PDMBlockchainIntegration {
         this.contract = null;
     }
     
-    async connect(ganacheUrl = "http://127.0.0.1:7545") {
+    async connect(rpcUrl = "http://127.0.0.1:8545") {
         try {
             // Web3 bağlantısı kurulacak
-            console.log(\`🌐 Connecting to \${ganacheUrl}...\`);
+            console.log(\`🌐 Connecting to \${rpcUrl}...\`);
             
             // Bu kısım Web3 kurulumundan sonra aktif olacak
             console.log("ℹ️  Web3 kurulumu için: npm install web3");

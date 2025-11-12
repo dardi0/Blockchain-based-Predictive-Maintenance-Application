@@ -783,7 +783,7 @@ def integrate_zk_with_existing_pdm(model, sensor_data: Dict, prediction_result: 
 def setup_zk_config() -> Dict:
     """ZK konfigürasyonunu döndürür"""
     return {
-        'web3_provider_url': 'http://127.0.0.1:7545',  # Ganache
+        'web3_provider_url': 'http://127.0.0.1:8545',  # Local Hardhat
         'contract_address': '0x...',  # ZKPredictiveMaintenance contract
         'zk_verifier_address': '0x...',  # ZKVerifier contract
         'private_key': '0x...'  # Cüzdan private key
@@ -811,4 +811,4 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"❌ ZK bağlantı hatası: {e}")
-        print("ℹ️ Ganache ve ZK contract'larının deploy edildiğinden emin olun") 
+        print("ℹ️ Hardhat local network ve ZK contract'larının deploy edildiğinden emin olun") 

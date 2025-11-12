@@ -1,19 +1,42 @@
 {
-  "name": "pdm-blockchain-zk",
-  "version": "1.0.0",
-  "description": "Predictive Maintenance System with ZK-SNARK Proofs",
+  "name": "integrated-pdm-system",
+  "version": "2.0.0",
+  "description": "Integrated Predictive Maintenance System with UniversalFailureVerifier",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy": "hardhat ignition deploy ignition/modules/Deploy.js",
-    "deploy:ganache": "hardhat ignition deploy ignition/modules/Deploy.js --network ganache",
-    "test": "hardhat test"
+    "deploy:integrated": "hardhat run scripts/deploy_integrated.js --network zkSyncSepolia",
+    "deploy:local": "hardhat run scripts/deploy_integrated.js --network localhost",
+    "deploy:full": "node scripts/deploy_full_system.js",
+    "test": "hardhat test",
+    "clean": "hardhat clean",
+    "demo": "python bc/demo_integrated_system.py"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
-    "@nomicfoundation/hardhat-ignition": "^0.15.0",
-    "hardhat": "^2.25.0"
+    "@matterlabs/hardhat-zksync-deploy": "^1.8.0",
+    "@matterlabs/hardhat-zksync-solc": "^1.5.1",
+    "@matterlabs/hardhat-zksync-verify": "^1.9.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.0",
+    "@nomicfoundation/hardhat-ignition": "latest",
+    "@nomicfoundation/hardhat-network-helpers": "latest",
+    "@nomicfoundation/hardhat-toolbox": "latest",
+    "dotenv": "^17.2.2",
+    "ethers": "latest",
+    "hardhat": "^2.26.3",
+    "zksync-ethers": "latest"
   },
   "dependencies": {
+    "@matterlabs/hardhat-zksync-ethers": "^1.4.0",
+    "@openzeppelin/contracts": "^4.9.6",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
     "web3": "^4.0.0"
-  }
+  },
+  "keywords": [
+    "predictive-maintenance",
+    "zero-knowledge",
+    "blockchain",
+    "failure-detection",
+    "integrated-system",
+    "ai4i2020"
+  ]
 }

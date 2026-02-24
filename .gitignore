@@ -149,3 +149,31 @@ public.json
 *.wasm
 *_js/
 
+# ================== EXCLUDED DUMPS ==================
+.venv_backup/
+failure.txt
+zksync_api_result.txt
+tracked_files.txt
+
+# ================== BINARY TOOLS ==================
+tools/*.exe
+tools/*.bin
+
+# ================== DATASETS ==================
+*.csv
+ai4i2020.csv
+
+# ================== FLAT/GENERATED SOLIDITY ==================
+*_flat.sol
+contracts/flat/
+
+# ================== LOCAL SCRIPTS ==================
+*.bat
+patch_*.js
+explore_*.py
+
+# ================== DEPLOYMENT DATA DUMPS ==================
+deployment_data_*.json
+
+# ================== HARDHAT IGNITION LOCAL ==================
+ignition/deployments/chain-1337/

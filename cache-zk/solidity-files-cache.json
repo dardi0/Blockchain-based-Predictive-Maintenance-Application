@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\AccessControlRegistry.sol": {
-      "lastModificationDate": 1759210645532,
-      "contentHash": "3961d5e1f9a9ee0ed9df589a9d2ff658",
+      "lastModificationDate": 1771857417064,
+      "contentHash": "603e63db684244398760c00ba8562f5f",
       "sourceName": "contracts/AccessControlRegistry.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -13,6 +13,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -49,8 +50,8 @@
       },
       "imports": [
         "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/security/Pausable.sol",
-        "@openzeppelin/contracts/security/ReentrancyGuard.sol"
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -59,10 +60,10 @@
         "AccessControlRegistry"
       ]
     },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\security\\Pausable.sol": {
-      "lastModificationDate": 1757601717281,
-      "contentHash": "25c8108f36fdd472bc78d4c4af240c11",
-      "sourceName": "@openzeppelin/contracts/security/Pausable.sol",
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\utils\\Pausable.sol": {
+      "lastModificationDate": 1771855589592,
+      "contentHash": "24e52f6ef3868e6fca664a423140bee9",
+      "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -71,6 +72,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -109,15 +111,70 @@
         "../utils/Context.sol"
       ],
       "versionPragmas": [
-        "^0.8.0"
+        "^0.8.20"
       ],
       "artifacts": [
         "Pausable"
       ]
     },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol": {
+      "lastModificationDate": 1770575352263,
+      "contentHash": "190613e556d509d9e9a0ea43dc5d891d",
+      "sourceName": "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ReentrancyGuard"
+      ]
+    },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\access\\Ownable.sol": {
-      "lastModificationDate": 1757601717265,
-      "contentHash": "5a20b2cad87ddb61c7a3a6af21289e28",
+      "lastModificationDate": 1770575351997,
+      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
       "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -127,6 +184,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -165,69 +223,15 @@
         "../utils/Context.sol"
       ],
       "versionPragmas": [
-        "^0.8.0"
+        "^0.8.20"
       ],
       "artifacts": [
         "Ownable"
       ]
     },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {
-      "lastModificationDate": 1757601717316,
-      "contentHash": "1535f8c0c68463f8c1b5239f7584e71f",
-      "sourceName": "@openzeppelin/contracts/security/ReentrancyGuard.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "mode": "3",
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          },
-          "libraries": {}
-        },
-        "zksolc": {
-          "version": "1.4.1",
-          "compilerSource": "binary",
-          "settings": {
-            "optimizer": {
-              "enabled": true,
-              "mode": "3",
-              "runs": 200
-            },
-            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
-            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
-            "areLibrariesMissing": false,
-            "experimental": {},
-            "libraries": {},
-            "enableEraVMExtensions": false,
-            "forceEVMLA": false
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.0"
-      ],
-      "artifacts": [
-        "ReentrancyGuard"
-      ]
-    },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
-      "lastModificationDate": 1757601714388,
-      "contentHash": "f07feb4a44b1a4872370da5aa70e8e46",
+      "lastModificationDate": 1770575345853,
+      "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -237,6 +241,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -273,15 +278,15 @@
       },
       "imports": [],
       "versionPragmas": [
-        "^0.8.0"
+        "^0.8.20"
       ],
       "artifacts": [
         "Context"
       ]
     },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\PdMSystemHybrid.sol": {
-      "lastModificationDate": 1759842798323,
-      "contentHash": "1ce17d26da4cc7cdd04e9dc07890f4e8",
+      "lastModificationDate": 1771610727257,
+      "contentHash": "d8fb0562f36264b0e48c4327bbac1dde",
       "sourceName": "contracts/PdMSystemHybrid.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -291,6 +296,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -327,24 +333,21 @@
       },
       "imports": [
         "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/security/Pausable.sol",
-        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "./AccessControlRegistry.sol",
-        "./UnifiedGroth16Verifier.sol",
-        "./interfaces/ISensorVerifier.sol"
+        "./UnifiedGroth16Verifier.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "IPredictionVerifier",
-        "IPredictionVerifierDirect",
         "PdMSystemHybrid"
       ]
     },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\UnifiedGroth16Verifier.sol": {
-      "lastModificationDate": 1759415780434,
-      "contentHash": "b66cfe6a388e5ae8a49214f7a63d8d77",
+      "lastModificationDate": 1771610673513,
+      "contentHash": "1b03fe6bb6d32a6799357c2dd8401bc3",
       "sourceName": "contracts/UnifiedGroth16Verifier.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -354,6 +357,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -401,7 +405,7 @@
       ]
     },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\interfaces\\ISensorVerifier.sol": {
-      "lastModificationDate": 1759240019394,
+      "lastModificationDate": 1760859013964,
       "contentHash": "cf4e6fa01afb6308618c1a45532f0fc5",
       "sourceName": "contracts/interfaces/ISensorVerifier.sol",
       "solcConfig": {
@@ -412,6 +416,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -455,8 +460,8 @@
       ]
     },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorDataVerifier.sol": {
-      "lastModificationDate": 1759255390320,
-      "contentHash": "d910855af6d6276750ff6def8d9e2cf7",
+      "lastModificationDate": 1770661736130,
+      "contentHash": "09370d257606eb88e09b3fabf652e8e0",
       "sourceName": "contracts/SensorDataVerifier.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -466,60 +471,7 @@
             "mode": "3",
             "runs": 200
           },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          },
-          "libraries": {}
-        },
-        "zksolc": {
-          "version": "1.4.1",
-          "compilerSource": "binary",
-          "settings": {
-            "optimizer": {
-              "enabled": true,
-              "mode": "3",
-              "runs": 200
-            },
-            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
-            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
-            "areLibrariesMissing": false,
-            "experimental": {},
-            "libraries": {},
-            "enableEraVMExtensions": false,
-            "forceEVMLA": false
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        ">=0.7.0 <0.9.0"
-      ],
-      "artifacts": [
-        "Groth16Verifier"
-      ]
-    },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorVerifierAdapter.sol": {
-      "lastModificationDate": 1759254919499,
-      "contentHash": "d4cfba25c3929b69d0999e8602189414",
-      "sourceName": "contracts/SensorVerifierAdapter.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "mode": "3",
-            "runs": 200
-          },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -555,20 +507,19 @@
         }
       },
       "imports": [
-        "./SensorDataVerifier.sol"
+        "./SensorDataVerifier3.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "ISensorVerifierAdapter",
-        "SensorVerifierAdapter"
+        "Groth16Verifier"
       ]
     },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\PredictionGroth16Verifier.sol": {
-      "lastModificationDate": 1759256193643,
-      "contentHash": "4d5075c45e6418af089a1d445ce4a9a3",
-      "sourceName": "contracts/PredictionGroth16Verifier.sol",
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorDataVerifier3.sol": {
+      "lastModificationDate": 1771613848555,
+      "contentHash": "3b75c8eba1e57f1217ec60c86d1037f1",
+      "sourceName": "contracts/SensorDataVerifier3.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -577,6 +528,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -613,15 +565,825 @@
       },
       "imports": [],
       "versionPragmas": [
-        ">=0.7.0 <0.9.0"
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "SensorDataVerifier3"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\chainlink\\PdMFunctionsConsumer.sol": {
+      "lastModificationDate": 1770576436081,
+      "contentHash": "84f3b1388b9db59697bfccdfd5b983e0",
+      "sourceName": "contracts/chainlink/PdMFunctionsConsumer.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@chainlink/contracts/src/v0.8/functions/v1_3_0/FunctionsClient.sol",
+        "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "IChainlinkPdMAutomation",
+        "PdMFunctionsConsumer"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\functions\\v1_3_0\\FunctionsClient.sol": {
+      "lastModificationDate": 1770575359367,
+      "contentHash": "b88c3dbbc2338f6fd977424d5f754b5d",
+      "sourceName": "@chainlink/contracts/src/v0.8/functions/v1_3_0/FunctionsClient.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../v1_0_0/interfaces/IFunctionsClient.sol",
+        "../v1_0_0/interfaces/IFunctionsRouter.sol",
+        "../v1_0_0/libraries/FunctionsRequest.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "FunctionsClient"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\functions\\v1_0_0\\libraries\\FunctionsRequest.sol": {
+      "lastModificationDate": 1770575359789,
+      "contentHash": "8c2ea8b3352182b3623b5d72f994fb84",
+      "sourceName": "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../../../vendor/solidity-cborutils/v2.0.0/CBOR.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "FunctionsRequest"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\functions\\v1_0_0\\interfaces\\IFunctionsClient.sol": {
+      "lastModificationDate": 1770575361018,
+      "contentHash": "2a200f8d13068f38d2e43aba82a42762",
+      "sourceName": "@chainlink/contracts/src/v0.8/functions/v1_0_0/interfaces/IFunctionsClient.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "IFunctionsClient"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\functions\\v1_0_0\\interfaces\\IFunctionsRouter.sol": {
+      "lastModificationDate": 1770575361057,
+      "contentHash": "c5f85ac73c634fd1fcf5a0eb5ae497b7",
+      "sourceName": "@chainlink/contracts/src/v0.8/functions/v1_0_0/interfaces/IFunctionsRouter.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../libraries/FunctionsResponse.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "IFunctionsRouter"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\vendor\\solidity-cborutils\\v2.0.0\\CBOR.sol": {
+      "lastModificationDate": 1770575354579,
+      "contentHash": "a496b670d630b3529a54986cd1148896",
+      "sourceName": "@chainlink/contracts/src/v0.8/vendor/solidity-cborutils/v2.0.0/CBOR.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../../@ensdomains/buffer/v0.1.0/Buffer.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.4"
+      ],
+      "artifacts": [
+        "CBOR"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\vendor\\@ensdomains\\buffer\\v0.1.0\\Buffer.sol": {
+      "lastModificationDate": 1770575351047,
+      "contentHash": "f56822d17e35b3259cbdb1318c866e20",
+      "sourceName": "@chainlink/contracts/src/v0.8/vendor/@ensdomains/buffer/v0.1.0/Buffer.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.4"
+      ],
+      "artifacts": [
+        "Buffer"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@chainlink\\contracts\\src\\v0.8\\functions\\v1_0_0\\libraries\\FunctionsResponse.sol": {
+      "lastModificationDate": 1770575359860,
+      "contentHash": "1e6b88f50b8007540bd4b0baf9c7279e",
+      "sourceName": "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsResponse.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "FunctionsResponse"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\chainlink\\ChainlinkPdMAutomation.sol": {
+      "lastModificationDate": 1770576399869,
+      "contentHash": "9be5ef58dce8935fc42405a948eaf85c",
+      "sourceName": "contracts/chainlink/ChainlinkPdMAutomation.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "../AccessControlRegistry.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "AutomationCompatibleInterface",
+        "ChainlinkPdMAutomation",
+        "IPdMFunctionsConsumer"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorVerifierAdapter3.sol": {
+      "lastModificationDate": 1770663217016,
+      "contentHash": "14a1acb76eefa74a3f7f65c58a8b7008",
+      "sourceName": "contracts/SensorVerifierAdapter3.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "./SensorDataVerifier3.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ISensorVerifierAdapter3",
+        "SensorVerifierAdapter3"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\chainlink\\BackendOracleConsumer.sol": {
+      "lastModificationDate": 1770576363520,
+      "contentHash": "1cdf5f6a9a1b8c5e01538522357ba316",
+      "sourceName": "contracts/chainlink/BackendOracleConsumer.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "BackendOracleConsumer",
+        "IChainlinkPdMAutomation"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\flat\\AccessControlRegistry_flat.sol": {
+      "lastModificationDate": 1771854288395,
+      "contentHash": "72c42e8a7fc85c0867ca2f07368f7a91",
+      "sourceName": "contracts/flat/AccessControlRegistry_flat.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0",
+        "^0.8.0",
+        "^0.8.0",
+        "^0.8.0",
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "AccessControlRegistry",
+        "Context",
+        "Ownable",
+        "Pausable",
+        "ReentrancyGuard"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\PredictionGroth16Verifier.sol": {
+      "lastModificationDate": 1770663110514,
+      "contentHash": "9dae58d40b90d859340f0902a7bca9ec",
+      "sourceName": "contracts/PredictionGroth16Verifier.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
       ],
       "artifacts": [
         "PredictionGroth16Verifier"
       ]
     },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\PredictionVerifierAdapter3.sol": {
+      "lastModificationDate": 1770663303148,
+      "contentHash": "0c63709fe301e03a3dece44ce616a2b6",
+      "sourceName": "contracts/PredictionVerifierAdapter3.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "./PredictionGroth16Verifier.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IPredictionVerifierAdapter3",
+        "PredictionVerifierAdapter3"
+      ]
+    },
     "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\PredictionVerifierAdapter.sol": {
-      "lastModificationDate": 1759258257136,
-      "contentHash": "500c4c74be8f2ff92d4cefcb9c1027a5",
+      "lastModificationDate": 1770663213291,
+      "contentHash": "c4c56370504e3e4736284b53e0121e99",
       "sourceName": "contracts/PredictionVerifierAdapter.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -631,6 +1393,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -676,10 +1439,10 @@
         "PredictionVerifierAdapter"
       ]
     },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorDataVerifier3.sol": {
-      "lastModificationDate": 1759766386004,
-      "contentHash": "2f46961ec292f4cbd220b025c1ca3672",
-      "sourceName": "contracts/SensorDataVerifier3.sol",
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SessionKeyAccount.sol": {
+      "lastModificationDate": 1771857070495,
+      "contentHash": "1aa536c353ecfd7ee6aa58aeb13e93a1",
+      "sourceName": "contracts/SessionKeyAccount.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -688,6 +1451,140 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IAccount.sol",
+        "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/TransactionHelper.sol",
+        "@matterlabs/zksync-contracts/contracts/system-contracts/Constants.sol",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/SystemContractsCaller.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "SessionKeyAccount"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\Constants.sol": {
+      "lastModificationDate": 1771855102964,
+      "contentHash": "f28f7bfe5ec5de707574da4510df21ee",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/Constants.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IAccountCodeStorage.sol",
+        "./interfaces/IBaseToken.sol",
+        "./interfaces/IBootloaderUtilities.sol",
+        "./interfaces/IBridgehub.sol",
+        "./interfaces/IComplexUpgrader.sol",
+        "./interfaces/ICompressor.sol",
+        "./interfaces/IContractDeployer.sol",
+        "./interfaces/ICreate2Factory.sol",
+        "./interfaces/IEvmHashesStorage.sol",
+        "./interfaces/IImmutableSimulator.sol",
+        "./interfaces/IKnownCodesStorage.sol",
+        "./interfaces/IL1Messenger.sol",
+        "./interfaces/IL2AssetRouter.sol",
+        "./interfaces/IL2NativeTokenVault.sol",
+        "./interfaces/IMessageRoot.sol",
+        "./interfaces/INonceHolder.sol",
+        "./interfaces/IPubdataChunkPublisher.sol",
+        "./interfaces/ISystemContext.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": []
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts\\utils\\cryptography\\ECDSA.sol": {
+      "lastModificationDate": 1771855589127,
+      "contentHash": "81de029d56aa803972be03c5d277cb6c",
+      "sourceName": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -724,16 +1621,16 @@
       },
       "imports": [],
       "versionPragmas": [
-        ">=0.7.0 <0.9.0"
+        "^0.8.20"
       ],
       "artifacts": [
-        "Groth16Verifier3"
+        "ECDSA"
       ]
     },
-    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SensorVerifierAdapter3.sol": {
-      "lastModificationDate": 1759766653784,
-      "contentHash": "8b5d1a42b6117a76e9fe7ce42ed2095d",
-      "sourceName": "contracts/SensorVerifierAdapter3.sol",
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\SystemContractsCaller.sol": {
+      "lastModificationDate": 1771855103230,
+      "contentHash": "f873ce16a460961e3cf0142a34aac646",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/SystemContractsCaller.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -742,6 +1639,7 @@
             "mode": "3",
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -777,14 +1675,1757 @@
         }
       },
       "imports": [
-        "./SensorDataVerifier3.sol"
+        "../Constants.sol",
+        "./Utils.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "SystemContractsCaller"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\TransactionHelper.sol": {
+      "lastModificationDate": 1771855103239,
+      "contentHash": "b69e3898d2b06c1c47bec75e69ae068a",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/TransactionHelper.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol",
+        "../Constants.sol",
+        "../SystemContractErrors.sol",
+        "../interfaces/IPaymasterFlow.sol",
+        "./EfficientCall.sol",
+        "./RLPEncoder.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "TransactionHelper"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IAccount.sol": {
+      "lastModificationDate": 1771855103121,
+      "contentHash": "e6764aca1124968745282f7680647313",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IAccount.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../libraries/TransactionHelper.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IAccount"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IContractDeployer.sol": {
+      "lastModificationDate": 1771855103150,
+      "contentHash": "2c2b3e5f609bdef9f86e6769e85f3a33",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IContractDeployer.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IContractDeployer"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\ICompressor.sol": {
+      "lastModificationDate": 1771855103142,
+      "contentHash": "13454dcac823ca2ff34ead3b66e4b7a6",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/ICompressor.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ICompressor"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IBaseToken.sol": {
+      "lastModificationDate": 1771855103129,
+      "contentHash": "5fb3f50c383e624190993060c11a4368",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IBaseToken.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IBaseToken"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IBridgehub.sol": {
+      "lastModificationDate": 1771855103140,
+      "contentHash": "a87e1b351ac548b563085f5606023510",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IBridgehub.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IBridgehub"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IAccountCodeStorage.sol": {
+      "lastModificationDate": 1771855103125,
+      "contentHash": "cee33b9d5fd6ad87cce6c74365fde36a",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IAccountCodeStorage.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IAccountCodeStorage"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IL2AssetRouter.sol": {
+      "lastModificationDate": 1771855103167,
+      "contentHash": "5d0039653c0ef80a4fd921f133f3c4e3",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IL2AssetRouter.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IL2AssetRouter"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IComplexUpgrader.sol": {
+      "lastModificationDate": 1771855103142,
+      "contentHash": "e8eb5eeb764bda0a3227dabaca09c1b6",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IComplexUpgrader.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "./IContractDeployer.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IComplexUpgrader"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IBootloaderUtilities.sol": {
+      "lastModificationDate": 1771855103131,
+      "contentHash": "4f5e7370456f3ff58833346f89bf7e03",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IBootloaderUtilities.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../libraries/TransactionHelper.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IBootloaderUtilities"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IEvmHashesStorage.sol": {
+      "lastModificationDate": 1771855103156,
+      "contentHash": "6df1495ca5ff4fd51067f8dc19287574",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IEvmHashesStorage.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IEvmHashesStorage"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IKnownCodesStorage.sol": {
+      "lastModificationDate": 1771855103161,
+      "contentHash": "430291e0349a907b41020db80b12170d",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IKnownCodesStorage.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IKnownCodesStorage"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\ICreate2Factory.sol": {
+      "lastModificationDate": 1771855103153,
+      "contentHash": "c7b6dd9e1de4d6cd8a903ea0a302c880",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/ICreate2Factory.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "./IContractDeployer.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ICreate2Factory"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IMessageRoot.sol": {
+      "lastModificationDate": 1771855103194,
+      "contentHash": "41a3dff07fa01ca6374b85c9c60aba5c",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IMessageRoot.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IMessageRoot"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IImmutableSimulator.sol": {
+      "lastModificationDate": 1771855103159,
+      "contentHash": "ae61d6d953d29f2465abb56f2b66636a",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IImmutableSimulator.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IImmutableSimulator"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IL2NativeTokenVault.sol": {
+      "lastModificationDate": 1771855103177,
+      "contentHash": "b23186b74ffa1ea17ff9983dad84c732",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IL2NativeTokenVault.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IL2NativeTokenVault"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IPubdataChunkPublisher.sol": {
+      "lastModificationDate": 1771855103205,
+      "contentHash": "2e5b5d4a7d3b790a3c1167f5e0384856",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IPubdataChunkPublisher.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IPubdataChunkPublisher"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\ISystemContext.sol": {
+      "lastModificationDate": 1771855103208,
+      "contentHash": "c791b4c27b4e71edda367a09714f5f19",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/ISystemContext.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "ISystemContext"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\INonceHolder.sol": {
+      "lastModificationDate": 1771855103198,
+      "contentHash": "a028f06e0c6ddd23221408e9d5a9ab15",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/INonceHolder.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "INonceHolder"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IL1Messenger.sol": {
+      "lastModificationDate": 1771855103164,
+      "contentHash": "83eec35be4d4a614c88abecd41a3f0a2",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IL1Messenger.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IL1Messenger"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\SystemContractErrors.sol": {
+      "lastModificationDate": 1771855102970,
+      "contentHash": "67bbb0a334c62ce5d885af9ca5c4118b",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/SystemContractErrors.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": []
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\interfaces\\IPaymasterFlow.sol": {
+      "lastModificationDate": 1771855103203,
+      "contentHash": "959d69afc50a7d4ff84af9e938bdb82e",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IPaymasterFlow.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IPaymasterFlow"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts-v4\\token\\ERC20\\IERC20.sol": {
+      "lastModificationDate": 1771855102843,
+      "contentHash": "df36f7051335cd1e748b1b6463b7fdd3",
+      "sourceName": "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\EfficientCall.sol": {
+      "lastModificationDate": 1771855103213,
+      "contentHash": "d7dcd3c1123b046094043cb494d36d90",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/EfficientCall.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../Constants.sol",
+        "../SystemContractErrors.sol",
+        "./SystemContractHelper.sol",
+        "./SystemContractsCaller.sol",
+        "./Utils.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "EfficientCall"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\RLPEncoder.sol": {
+      "lastModificationDate": 1771855103218,
+      "contentHash": "ed3e0c02d3c750a057971b13c950fa8b",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/RLPEncoder.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "RLPEncoder"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts-v4\\token\\ERC20\\utils\\SafeERC20.sol": {
+      "lastModificationDate": 1771855103055,
+      "contentHash": "1b5d667d3740d866eca0352758e59827",
+      "sourceName": "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../IERC20.sol",
+        "../extensions/IERC20Permit.sol",
+        "../../../utils/Address.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "SafeERC20"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\Utils.sol": {
+      "lastModificationDate": 1771855103241,
+      "contentHash": "08ab8495a100e8e499fd110ac9ea08da",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/Utils.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../Constants.sol",
+        "../SystemContractErrors.sol",
+        "./EfficientCall.sol",
+        "./RLPEncoder.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "Utils"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@matterlabs\\zksync-contracts\\contracts\\system-contracts\\libraries\\SystemContractHelper.sol": {
+      "lastModificationDate": 1771855103224,
+      "contentHash": "f61c656df5238c4ce8e5fbce565d2812",
+      "sourceName": "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/SystemContractHelper.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "../Constants.sol",
+        "../interfaces/IContractDeployer.sol",
+        "../SystemContractErrors.sol",
+        "./SystemContractsCaller.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "SystemContractHelper"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts-v4\\utils\\Address.sol": {
+      "lastModificationDate": 1771855102152,
+      "contentHash": "211ffd288c1588ba8c10eae668ca3c66",
+      "sourceName": "@openzeppelin/contracts-v4/utils/Address.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.1"
+      ],
+      "artifacts": [
+        "Address"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\node_modules\\@openzeppelin\\contracts-v4\\token\\ERC20\\extensions\\IERC20Permit.sol": {
+      "lastModificationDate": 1771855102860,
+      "contentHash": "525fcdad8d171312933f47baf01d1ed8",
+      "sourceName": "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Permit.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20Permit"
+      ]
+    },
+    "C:\\Users\\dardi\\OneDrive - sdu.edu.tr\\Masaüstü\\pdm\\contracts\\SessionKeyAccountFactory.sol": {
+      "lastModificationDate": 1771857072726,
+      "contentHash": "0396853c551da3b9430e971d04801d52",
+      "sourceName": "contracts/SessionKeyAccountFactory.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "mode": "3",
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3",
+              "runs": 200
+            },
+            "compilerPath": "C:\\Users\\dardi\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": false,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [
+        "@matterlabs/zksync-contracts/contracts/system-contracts/Constants.sol",
+        "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/SystemContractsCaller.sol",
+        "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IContractDeployer.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "ISensorVerifierAdapter3",
-        "SensorVerifierAdapter3"
+        "SessionKeyAccountFactory"
       ]
     }
   }

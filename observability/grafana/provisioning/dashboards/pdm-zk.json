@@ -1,0 +1,138 @@
+{
+  "title": "PDM — ZK Proof & Blockchain Monitor",
+  "uid": "pdm-zk-001",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "ZK Proof Hataları (son 1 saat)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "count_over_time({service=~\".+\"} |= `zk_proof_failed` [1h])",
+          "legendFormat": "ZK Hataları"
+        }
+      ],
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "RPC Kopma Sayısı (son 1 saat)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "count_over_time({service=~\".+\"} |= `rpc_disconnected` [1h])",
+          "legendFormat": "RPC Kopmaları"
+        }
+      ],
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "TX Başarı / Başarısız (son 1 saat)",
+      "type": "piechart",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "count_over_time({service=~\".+\", event_type=\"tx_confirmed\"} [1h])",
+          "legendFormat": "Başarılı"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "count_over_time({service=~\".+\", event_type=\"tx_failed\"} [1h])",
+          "legendFormat": "Başarısız"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Node Başına Hata Dağılımı",
+      "type": "bargauge",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "sum by (node_id) (count_over_time({level=\"error\"} [1h]))",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "ZK Olayları Zaman Serisi",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "sum by (event_type) (count_over_time({event_type=~\"zk_proof.*|witness.*|circuit.*\"} [5m]))",
+          "legendFormat": "{{event_type}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Circuit Başına Hata",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "sum by (circuit_type) (count_over_time({level=\"error\", circuit_type=~\".+\"} [5m]))",
+          "legendFormat": "{{circuit_type}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Canlı Log Akışı — Hatalar",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "dedupStrategy": "none"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "-- Grafana --" },
+          "expr": "{level=~\"error|critical\"}",
+          "legendFormat": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "network": "zksync_sepolia",
+  "timestamp": "2026-02-08T11:45:28.150Z",
+  "accessRegistry": "0xC66878050d91D43f0F58436DbAFe285b05B5F5E5",
+  "nodes": {
+    "automation": {
+      "address": "0x2Ae6645832466285B938820C9f2d8DcB38AF4A0f",
+      "nodeType": "DATA_PROCESSOR",
+      "accessLevel": "WRITE_LIMITED"
+    },
+    "functions": {
+      "address": "0x23f8e055f4de87449B286668149b78bCd94ADa41",
+      "nodeType": "FAILURE_ANALYZER",
+      "accessLevel": "WRITE_LIMITED"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+###############################################################################
+# PDM Observability Stack
+#
+# Servisler:
+#   loki     - Log aggregation (Prometheus benzeri ama loglar için)
+#   grafana  - Dashboard & alerting
+#   alloy    - Grafana Alloy (Promtail'in modern halefi): log scraping + forwarding
+#
+# Başlatma:
+#   docker compose -f docker-compose.observability.yml up -d
+#
+# Grafana:  http://localhost:3000  (admin / admin)
+# Loki API: http://localhost:3100
+###############################################################################
+
+services:
+
+  # --------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.4.1
+    container_name: pdm-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./observability/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: pdm-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Grafana Alloy: log dosyalarını okur, JSON parse eder, Loki'ye gönderir
+  alloy:
+    image: grafana/alloy:v1.7.4
+    container_name: pdm-alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ./observability/alloy.river:/etc/alloy/config.alloy:ro
+      # PDM log dosyalarına erişim — host path'ini ortamınıza göre ayarlayın
+      - ${PDM_LOG_DIR:-./}:/pdm-logs:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  loki-data:
+  grafana-data:

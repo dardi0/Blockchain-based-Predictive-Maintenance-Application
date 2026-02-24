@@ -1,47 +1,58 @@
 {
   "network": "ZKSYNC_ERA",
-  "deployer": "0xE81eC6620856e62B4e1E04A1Fc9199f4293ed42f",
-  "timestamp": "2025-09-30T17:50:06.535Z",
-  "deployment_time_seconds": 31.751,
+  "chainId": 300,
+  "deployer": "0xD7c504d02A9265708b8400aFbde149c6677C5869",
+  "timestamp": "2026-02-23T15:40:48.022Z",
+  "deployment_time_seconds": 57.53,
   "system_type": "hybrid",
   "features": {
     "offChainStorage": true,
     "zkProofs": true,
     "accessControl": true,
-    "gasOptimized": true
+    "roleBasedAccess": true,
+    "autoRoleGrant": true
   },
   "contracts": {
     "AccessControlRegistry": {
       "name": "AccessControlRegistry",
-      "address": "0xA813ddc2bFFa049E64884DeF89cE425924E80052"
+      "address": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
+      "purpose": "Merkezi erişim kontrolü ve rol yönetimi"
     },
     "UnifiedGroth16Verifier": {
       "name": "UnifiedGroth16Verifier",
-      "address": "0x4D680F2C3A391c2c4b63d940074171322078232E"
+      "address": "0xD35C56E1b0a3e343506fae113B3800e9FeB27826",
+      "purpose": "ZK-SNARK proof doğrulama motoru",
+      "sensorVKSet": true
     },
     "PdMSystemHybrid": {
       "name": "PdMSystemHybrid",
-      "address": "0x6e4d0795E6340d5E9D9dFAf2e64C3B407645d06e",
+      "address": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B",
+      "purpose": "Ana hibrit PDM sistemi",
       "dependencies": {
-        "accessRegistry": "0xA813ddc2bFFa049E64884DeF89cE425924E80052",
-        "zkVerifier": "0x4D680F2C3A391c2c4b63d940074171322078232E"
+        "accessRegistry": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
+        "zkVerifier": "0xD35C56E1b0a3e343506fae113B3800e9FeB27826"
       },
-      "adapters": {
-        "sensor": "0xFdf7674aDb1227bA594E17c183a3A83d93F15206",
-        "prediction": "0x74f865e1F10e2Ea1fB5C2571A5Ffeb13A29f13FB"
-      }
-    },
-    "SensorVerifierAdapter": {
-      "name": "SensorVerifierAdapter",
-      "address": "0xFdf7674aDb1227bA594E17c183a3A83d93F15206"
-    },
-    "PredictionVerifierAdapter": {
-      "name": "PredictionVerifierAdapter",
-      "address": "0x74f865e1F10e2Ea1fB5C2571A5Ffeb13A29f13FB"
-    },
-    "SensorVerifierAdapter3": {
-      "name": "SensorVerifierAdapter3",
-      "address": "0x7E578B41Afc0e6cE240987a33d39037204D15d29"
+      "newResourcesGranted": true
     }
+  },
+  "roles": {
+    "summary": "Roles assigned successfully. See chain for details.",
+    "manager_assigned": true,
+    "engineer_assigned": true,
+    "operator_assigned": true
+  },
+  "verification": {
+    "allRolesAssigned": true,
+    "summary": "Verification details removed for security."
+  },
+  "explorer": {
+    "accessRegistry": "https://sepolia.explorer.zksync.io/address/0x54414105CAc169bBEA3Cf21557844B030B79295a",
+    "verifier": "https://sepolia.explorer.zksync.io/address/0xD35C56E1b0a3e343506fae113B3800e9FeB27826",
+    "pdmSystem": "https://sepolia.explorer.zksync.io/address/0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B"
+  },
+  "smartAccounts": {
+    "factory": "0x79c0434b5E260ce0f8D30bE69cf6007Cd68778CB",
+    "engineer": "0x6be012cb62679CA942F4d1FA66F34d49Be9643C7",
+    "operator": "0x1b506783477E93045070b5FA5717FAE7212d5E1f"
   }
 }

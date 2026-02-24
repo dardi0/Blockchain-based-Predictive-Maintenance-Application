@@ -1,0 +1,72 @@
+// Grafana Alloy konfigürasyonu — PDM Log Scraping
+// Alloy, Promtail'in yerini alan modern Grafana agent.
+//
+// Akış: log dosyaları → JSON parse → label çıkarma → Loki push
+
+// -----------------------------------------------------------------
+// 1. Log dosyalarını izle
+// -----------------------------------------------------------------
+local.file_match "pdm_logs" {
+  path_targets = [
+    {__path__ = "/pdm-logs/*.log"},
+    {__path__ = "/pdm-logs/automation_listener.log"},
+  ]
+  sync_period = "5s"
+}
+
+// -----------------------------------------------------------------
+// 2. JSON satırlarını işle ve Loki label'larına dönüştür
+// -----------------------------------------------------------------
+loki.process "pdm_pipeline" {
+  forward_to = [loki.write.default.receiver]
+
+  // JSON log formatını parse et
+  stage.json {
+    expressions = {
+      level        = "level",
+      service      = "logger",
+      node_id      = "node_id",
+      event_type   = "event_type",
+      circuit_type = "circuit_type",
+      message      = "message",
+    }
+  }
+
+  // Düşük kardinaliteli alanları Loki label yap
+  // (yüksek kardinaliteli: correlation_id, tx_hash → label olmaz, log içinde kalır)
+  stage.labels {
+    values = {
+      level        = "level",
+      service      = "service",
+      node_id      = "node_id",
+      event_type   = "event_type",
+      circuit_type = "circuit_type",
+    }
+  }
+
+  // Timestamp alanını Loki timestamp olarak kullan
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339Nano"
+  }
+
+  // Log satırını sadece message alanına daralt (isteğe bağlı)
+  // Tüm JSON'u saklamak için bu bloğu kaldırın.
+  stage.output {
+    source = "message"
+  }
+}
+
+// -----------------------------------------------------------------
+// 3. Loki'ye gönder
+// -----------------------------------------------------------------
+loki.source.file "pdm_files" {
+  targets    = local.file_match.pdm_logs.targets
+  forward_to = [loki.process.pdm_pipeline.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

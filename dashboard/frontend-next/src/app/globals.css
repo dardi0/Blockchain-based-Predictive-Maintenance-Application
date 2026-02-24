@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: var(--light-bg);
+  --foreground: var(--dark-bg);
+
+  /* Theme Colors (overridden by JS) */
+  --accent-primary: #2d8b8b;
+  --accent-hover: #257575;
+  --accent-highlight: #a8dadc;
+  --dark-bg: #1a2332;
+  --dark-bg-secondary: #162430;
+  --dark-bg-deep: #0b1421;
+  --light-bg: #f1faee;
+  --light-bg-secondary: #d4e8e0;
+  --light-bg-tertiary: #e8f4f0;
+  --accent-glow: rgba(45, 139, 139, 0.35);
+  --accent-highlight-glow: rgba(168, 218, 220, 0.25);
+  --scrollbar-thumb: #2d8b8b;
+  --scrollbar-thumb-end: #155858;
+
+  /* RGB variants for rgba() usage */
+  --accent-primary-rgb: 45, 139, 139;
+  --accent-highlight-rgb: 168, 218, 220;
+  --light-bg-rgb: 241, 250, 238;
+  --dark-bg-rgb: 26, 35, 50;
+  --dark-bg-deep-rgb: 11, 20, 33;
+
+  /* Surface colors for cards/modals (slightly lighter than bg) */
+  --surface: color-mix(in srgb, var(--light-bg), white 40%);
+  --surface-alt: color-mix(in srgb, var(--light-bg), white 20%);
+
+  /* Cubic BG pattern */
+  --s: 100px;
+  --c1: var(--light-bg);
+  --c2: var(--light-bg-secondary);
+  --c3: var(--light-bg-tertiary);
+}
+
+:root.dark {
+  --background: var(--dark-bg-deep);
+  --foreground: var(--light-bg);
+
+  /* Surface colors for dark mode */
+  --surface: var(--dark-bg);
+  --surface-alt: var(--dark-bg-secondary);
+
+  --s: 100px;
+  --c1: var(--dark-bg-deep);
+  --c2: var(--dark-bg-secondary);
+  --c3: var(--dark-bg);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-down {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes zoom-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-fade-in-up: fade-in-up 0.5s ease-out;
+  --animate-fade-in-down: fade-in-down 0.5s ease-out;
+  --animate-zoom-in: zoom-in 0.2s ease-out;
+}
+
+body {
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  width: 100%;
+  min-height: 100vh;
+
+  background:
+    repeating-conic-gradient(from 30deg,
+      #0000 0 120deg,
+      var(--c3) 0 180deg) calc(0.5 * var(--s)) calc(0.5 * var(--s) * 0.577),
+    repeating-conic-gradient(from 30deg,
+      var(--c1) 0 60deg,
+      var(--c2) 0 120deg,
+      var(--c3) 0 180deg);
+  background-size: var(--s) calc(var(--s) * 0.577);
+  background-color: var(--c1);
+  background-attachment: fixed;
+}
+
+/* Glass Card - fully theme-aware */
+.glass-card {
+  background: rgba(var(--light-bg-rgb), 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--accent-highlight-rgb), 0.3);
+  box-shadow: 0 4px 6px -1px rgba(var(--dark-bg-rgb), 0.1), 0 2px 4px -1px rgba(var(--dark-bg-rgb), 0.06);
+}
+
+.dark .glass-card {
+  background: rgba(var(--dark-bg-rgb), 0.85);
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.15);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 20px rgba(var(--accent-primary-rgb), 0.05);
+}
+
+.glow-blue:hover {
+  box-shadow: 0 0 25px var(--accent-glow);
+}
+
+.glow-emerald:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(var(--accent-highlight-rgb), 0.1);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--scrollbar-thumb), var(--scrollbar-thumb-end));
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--scrollbar-thumb-end), var(--scrollbar-thumb));
+}
+
+.dark ::-webkit-scrollbar-track,
+:root.dark ::-webkit-scrollbar-track {
+  background: rgba(var(--dark-bg-rgb), 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb,
+:root.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--scrollbar-thumb), var(--scrollbar-thumb-end));
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+:root.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--scrollbar-thumb-end), var(--scrollbar-thumb));
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.dark * {
+  scrollbar-color: var(--scrollbar-thumb) rgba(var(--dark-bg-rgb), 0.5);
+}
+
+/* Dark Mode Card Overrides - theme-aware */
+.dark .tech-card {
+  background: linear-gradient(135deg, rgba(var(--dark-bg-rgb), 0.95), rgba(var(--dark-bg-deep-rgb), 0.95));
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(var(--accent-primary-rgb), 0.06);
+}
+
+.dark .tech-card:hover {
+  border-color: rgba(var(--accent-primary-rgb), 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(var(--accent-primary-rgb), 0.1);
+}
+
+.dark .tech-glow {
+  box-shadow: 0 0 30px var(--accent-glow), 0 0 60px rgba(var(--accent-primary-rgb), 0.1);
+}
+
+.dark .tech-accent-border {
+  border-image: linear-gradient(135deg, var(--accent-primary), var(--accent-highlight)) 1;
+}
+
+/* Light cubic BG */
+.bg-cubic-light {
+  width: 100%;
+  height: 100%;
+  --s: 200px;
+  --c1: var(--light-bg-tertiary);
+  --c2: var(--light-bg-secondary);
+  --c3: var(--light-bg);
+
+  background: repeating-conic-gradient(from 30deg,
+      #0000 0 120deg,
+      var(--c3) 0 180deg) calc(0.5 * var(--s)) calc(0.5 * var(--s) * 0.577),
+    repeating-conic-gradient(from 30deg,
+      var(--c1) 0 60deg,
+      var(--c2) 0 120deg,
+      var(--c3) 0 180deg);
+  background-size: var(--s) calc(var(--s) * 0.577);
+}

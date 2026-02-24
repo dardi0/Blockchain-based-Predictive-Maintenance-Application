@@ -6,7 +6,7 @@ Bu dosya, PDM sisteminin farklı süreçlerini gösteren modüler sequence diyag
 
 ## 📋 İçindekiler
 
-1. [Node Management & Access Control](#1-node-management--access-control) - Node kayıt, güncelleme, rol atama
+1. [Node Management & Access Control](#1-node-management--access-control) - Node kayıt, erişim izinleri, rol atama
 2. [Sensor Data Submission](#2-sensor-data-submission) - Sensör verisi gönderme
 3. [Prediction Submission](#3-prediction-submission) - Tahmin analizi
 
@@ -14,7 +14,7 @@ Bu dosya, PDM sisteminin farklı süreçlerini gösteren modüler sequence diyag
 
 ## 1. Node Management & Access Control
 
-Genel node yönetim süreci: kayıt, erişim kontrolü ve yönetim işlemleri.
+Node kaydı, erişim izinleri ve rol atama işlemleri.
 
 ```mermaid
 sequenceDiagram
@@ -24,72 +24,30 @@ sequenceDiagram
     participant BC as ⛓️ Blockchain<br/>(zkSync Era)
 
     rect rgb(255, 250, 240)
-    Note over Manager,BC: 📝 NODE REGISTRATION & ACCESS SETUP
+    Note over Manager,BC: 📝 NODE REGISTRATION & AUTO-ACCESS SETUP
     
     Manager->>AC: registerNode(nodeName, userAddress, nodeType, accessLevel)
-    Note over AC: NodeType: DATA_PROCESSOR, FAILURE_ANALYZER, etc.<br/>AccessLevel: WRITE_LIMITED, FULL_ACCESS, etc.
+    Note over AC: NodeType: DATA_PROCESSOR (Operator), FAILURE_ANALYZER (Engineer), MANAGER (Manager)<br/>AccessLevel: WRITE_LIMITED, FULL_ACCESS, etc.
     AC->>AC: Generate unique nodeId
     AC->>AC: Create Node struct<br/>{owner: userAddress, status: ACTIVE, nodeType, accessLevel}
     AC->>AC: addressToNodes[userAddress].push(nodeId)
+    
+    AC->>AC: 🚀 _autoGrantPermissionsByNodeType(nodeId, nodeType)
+    Note over AC: AUTO-GRANT PERMISSIONS:<br/>DATA_PROCESSOR → SENSOR_DATA + OPERATOR_ROLE ✅<br/>FAILURE_ANALYZER → PREDICTION + SENSOR_DATA + ENGINEER_ROLE ✅<br/>MANAGER → ALL RESOURCES + MANAGER_ROLE 👑
+    AC->>AC: nodePermissions[nodeId][resource] = true<br/>+ grantRole(OPERATOR/ENGINEER/SYSTEM_ADMIN, owner) by nodeType
+    
     AC->>BC: Emit NodeRegistered event
-    BC-->>Manager: ✅ nodeId
+    AC->>BC: Emit AccessApproved event (auto-granted)
+    BC-->>Manager: ✅ nodeId + Auto permissions granted!
     
-    Manager->>AC: requestAccess(nodeId, targetResource, requestedLevel, justification)
-    Note over AC: Resources: SENSOR_DATA, PREDICTION, CONFIG, etc.
-    AC->>AC: Create AccessRequest struct
-    AC->>BC: Emit AccessRequested event
-    BC-->>Manager: ✅ requestId
-    
-    Manager->>AC: approveAccessRequest(requestId)
-    AC->>AC: Check: hasRole[Manager][SYSTEM_ADMIN_ROLE]? ✅
-    AC->>AC: nodePermissions[nodeId][targetResource] = true
-    AC->>BC: Emit AccessApproved event
-    BC-->>Manager: ✅ Access granted
-    
-    Note over User,BC: ✅ User artık atanan node ile işlem yapabilir
-    end
-
-    rect rgb(240, 255, 250)
-    Note over Manager,BC: 🔄 NODE MANAGEMENT OPERATIONS
-    
-    alt Node Update (by Owner)
-        User->>AC: updateNode(nodeId, newName, nodeType, accessLevel, metadata)
-        AC->>AC: Check: nodes[nodeId].owner == msg.sender? ✅
-        AC->>AC: Update node fields
-        AC->>BC: Emit NodeUpdated event
-        BC-->>User: ✅ Updated
-    
-    else Status Change (by Manager)
-        Manager->>AC: changeNodeStatus(nodeId, newStatus)
-        Note over AC: Status: ACTIVE, SUSPENDED, MAINTENANCE, etc.
-        AC->>AC: Check: hasRole[Manager][SYSTEM_ADMIN]? ✅
-        AC->>AC: nodes[nodeId].status = newStatus
-        AC->>BC: Emit NodeUpdated event
-        BC-->>Manager: ✅ Status changed
-    
-    else Blacklist (by Manager)
-        Manager->>AC: blacklistNode(nodeId, reason)
-        AC->>AC: Check: hasRole[Manager][SYSTEM_ADMIN]? ✅
-        AC->>AC: nodes[nodeId].isBlacklisted = true
-        AC->>AC: nodes[nodeId].status = SUSPENDED
-        AC->>BC: Emit NodeBlacklisted event
-        BC-->>Manager: ✅ Blacklisted
-        Note over AC: Node tüm erişimlerini kaybeder
-    
-    else Revoke Access (by Manager)
-        Manager->>AC: revokeAccess(nodeId, resource, reason)
-        AC->>AC: Check: hasRole[Manager][SYSTEM_ADMIN]? ✅
-        AC->>AC: nodePermissions[nodeId][resource] = false
-        AC->>BC: Emit AccessRevoked event
-        BC-->>Manager: ✅ Access revoked
-    end
+    Note over User,BC: ✅ User artık atanan node ile HEMEN işlem yapabilir!<br/>requestAccess + approveAccessRequest GEREKSİZ! 🚀
     end
 
     rect rgb(255, 240, 250)
     Note over Manager,BC: 👑 ROLE MANAGEMENT
     
     Manager->>AC: grantRole(roleName, userAddress)
-    Note over AC: Roles: SUPER_ADMIN, SYSTEM_ADMIN,<br/>NODE_MANAGER, AUDITOR
+    Note over AC: Roles: SUPER_ADMIN, SYSTEM_ADMIN,<br/>ENGINEER_ROLE, OPERATOR_ROLE
     AC->>AC: Check: hasRole[Manager][SUPER_ADMIN]? ✅
     AC->>AC: hasRole[userAddress][roleName] = true
     AC->>BC: Emit RoleGranted event
@@ -276,33 +234,33 @@ Her proof bir öncekine bağlıdır ve blockchain'de doğrulanabilir bir zincir 
 
 ### **1. 👨‍💼 Manager Node (Yönetici)**
 - **Sorumluluk:** Sistem kurulumu, node yönetimi, erişim kontrolü
-- **Yetki Seviyesi:** `NODE_MANAGER_ROLE` / `ADMIN_ACCESS`
+- **Yetki Seviyesi:** `MANAGER_ROLE` / `ADMIN_ACCESS`
 - **İşlemler:**
   - ✅ Node kayıt (Operator, Engineer)
   - ✅ Erişim izni verme/kaldırma
   - ✅ Access request onaylama
   - ✅ Sistem konfigürasyonu
-- **AccessControl:** `NODE_MANAGER_ROLE`
+- **AccessControl:** `MANAGER_ROLE`
 
 ### **2. 👨‍🔧 Engineer Node (Mühendis)**
 - **Sorumluluk:** Model eğitimi, tahmin analizi
-- **Yetki Seviyesi:** `WRITE_FULL` (tam erişim)
+- **Yetki Seviyesi:** `ENGINEER_ROLE` / `WRITE_LIMITED`
 - **İşlemler:**
   - ✅ Model konfigürasyonu güncelleme
   - ✅ Eğitilmiş model kaydetme
   - ✅ Tahmin (prediction) proof'u gönderme
   - ✅ Sensor data sorgulama
-- **AccessControl:** `hasAccess(engineer, CONFIG/PREDICTION, WRITE_FULL)`
+- **AccessControl:** `hasRole[engineer][ENGINEER_ROLE]` + `hasAccess(engineer, PREDICTION/SENSOR_DATA, WRITE_LIMITED)`
 
 ### **3. 👷 Operator Node (Operatör)**
 - **Sorumluluk:** Sensör veri toplama, makine izleme
-- **Yetki Seviyesi:** `WRITE_LIMITED` (sınırlı erişim)
+- **Yetki Seviyesi:** `OPERATOR_ROLE` / `WRITE_LIMITED`
 - **İşlemler:**
   - ✅ Sensör verisi toplama ve gönderme
   - ✅ ZK proof oluşturma
   - ❌ Model güncelleme (yetkisiz)
   - ❌ Config değiştirme (yetkisiz)
-- **AccessControl:** `hasAccess(operator, SENSOR_DATA, WRITE_LIMITED)`
+- **AccessControl:** `hasRole[operator][OPERATOR_ROLE]` + `hasAccess(operator, SENSOR_DATA, WRITE_LIMITED)`
 
 ---
 
@@ -311,3 +269,132 @@ Her proof bir öncekine bağlıdır ve blockchain'de doğrulanabilir bir zincir 
 - **Off-chain:** Ham sensör değerleri (6 parametre)
 - **On-chain:** Sadece ZK proof + metadata (machineId, timestamp, dataCommitment)
 - **Sonuç:** Tam veri gizliliği + blockchain doğrulaması
+
+---
+
+## 🗂️ Node Tipleri
+
+Sistem **3 aktif node tipi** kullanır:
+
+### **1. DATA_PROCESSOR (NodeType = 1)**
+- **Kullanım:** Operator rolü için
+- **Görev:** `submitSensorDataProof()` çağrısı
+- **Otomatik Erişim:** ✅ `SENSOR_DATA` kaynağı (kayıt anında verilir)
+- **Otomatik Rol:** ✅ `OPERATOR_ROLE` (node owner'a verilir)
+- **Erişim Seviyesi:** `WRITE_LIMITED`
+
+### **2. FAILURE_ANALYZER (NodeType = 2)**
+- **Kullanım:** Engineer rolü için
+- **Görev:** `submitPredictionProof()` çağrısı
+- **Otomatik Erişim:** ✅ `PREDICTION` kaynağı (write) + `SENSOR_DATA` (read, analiz için)
+- **Otomatik Rol:** ✅ `ENGINEER_ROLE` (node owner'a verilir)
+- **Erişim Seviyesi:** `WRITE_LIMITED`
+
+### **3. MANAGER (NodeType = 3)** 🆕
+- **Kullanım:** Yönetici (Manager) rolü için
+- **Görev:** Sistem yönetimi, node kayıt, erişim kontrolü
+- **Otomatik Erişim:** ✅ TÜM KAYNAKLAR (`SENSOR_DATA`, `PREDICTION`, `CONFIG`, `AUDIT_LOGS`)
+- **Otomatik Rol:** 👑 `MANAGER_ROLE` (node owner'a verilir)
+- **Erişim Seviyesi:** `FULL_ACCESS` veya `ADMIN_ACCESS`
+
+### **❌ Kaldırılan Node Tipleri:**
+- **VERIFICATION_NODE:** ZK proof doğrulama smart contract tarafından otomatik yapılıyor
+- **MAINTENANCE_MANAGER:** Henüz implement edilmedi (gelecek özellik)
+- **AUDIT_NODE:** `AUDITOR_ROLE` yeterli (sadece okuma için)
+- **GATEWAY_NODE:** Off-chain konsept, blockchain'de gereksiz
+
+---
+
+## 🚀 **Otomatik İzin Verme (Auto-Grant Permissions)**
+
+### **Nasıl Çalışır?**
+
+Node kayıt edildiğinde (`registerNode`), node tipi algılanır ve **otomatik olarak** ilgili kaynaklara erişim izni verilir:
+
+```solidity
+function registerNode(..., NodeType nodeType, ...) {
+    // ... node oluştur ...
+    
+    // 🚀 Otomatik izin ver
+    _autoGrantPermissionsByNodeType(nodeId, nodeType);
+    
+    // ✅ Artık requestAccess + approveAccessRequest GEREKSİZ!
+}
+```
+
+### **İzin Matrisi:**
+
+| **Node Type** | **Otomatik Erişim Kaynakları** | **Otomatik Rol** | **Erişim Türü** |
+|---------------|-------------------------------|-----------------|-----------------|
+| `DATA_PROCESSOR` | `SENSOR_DATA` | `OPERATOR_ROLE` | Write (veri gönderme) |
+| `FAILURE_ANALYZER` | `PREDICTION` | `ENGINEER_ROLE` | Write (tahmin gönderme) |
+| `FAILURE_ANALYZER` | `SENSOR_DATA` | `ENGINEER_ROLE` | Read (analiz için okuma) |
+| `MANAGER` | `SENSOR_DATA`, `PREDICTION`, `CONFIG`, `AUDIT_LOGS` | `MANAGER_ROLE` 👑 | Full Access (yönetim) |
+| `UNDEFINED` | Yok | - | Manuel izin gerekli |
+
+### **Avantajlar:**
+
+1. ✅ **Hızlı kurulum** - 3 adım → 1 adım
+2. ✅ **Hata riski azalır** - Manuel onay unutulmaz
+3. ✅ **Daha az gas** - 2 transaction yerine 1
+4. ✅ **Kullanıcı dostu** - Karmaşıklık azalır
+5. ✅ **Standart izinler** - Her node tipi doğru izinleri alır
+
+### **Özel İzinler Gerekirse?**
+
+Otomatik izinlerin yanında **ek izinler** de manuel olarak verilebilir:
+
+```solidity
+// Otomatik: SENSOR_DATA izni verildi
+registerNode("Operator-1", operatorAddr, DATA_PROCESSOR, ...);
+
+// İsteğe bağlı: CONFIG iznini de ekle
+requestAccess(nodeId, CONFIG_RESOURCE, READ_ONLY);
+approveAccessRequest(requestId);
+```
+
+---
+
+## 👨‍💼 **MANAGER Node Kullanımı**
+
+### **Senaryo: Manager Kaydı**
+
+```javascript
+// 1️⃣ SUPER_ADMIN, Manager için MANAGER node oluşturur
+await accessRegistry.registerNode(
+    "Manager-Node",         // nodeName
+    managerAddress,         // nodeAddress (Manager'ın wallet'ı)
+    3,                      // NodeType.MANAGER
+    4,                      // AccessLevel.ADMIN_ACCESS
+    0,                      // accessDuration (süresiz)
+    '{"role":"system_admin"}' // metadata
+);
+
+// ✅ OTOMATIK OLARAK:
+// - SENSOR_DATA kaynağına erişim ✅
+// - PREDICTION kaynağına erişim ✅
+// - CONFIG kaynağına erişim ✅
+// - AUDIT_LOGS kaynağına erişim ✅
+// - managerAddress → MANAGER_ROLE ✅ (ROL ATANDI!)
+
+// 2️⃣ Manager artık tüm yönetim işlemlerini yapabilir:
+await accessRegistry.connect(manager).registerNode(
+    "Operator-1",
+    operatorAddress,
+    1, // DATA_PROCESSOR
+    2, // WRITE_LIMITED
+    0,
+    "{}"
+);
+
+await accessRegistry.connect(manager).approveAccessRequest(requestId);
+await accessRegistry.connect(manager).blacklistNode(suspiciousNodeId, "Suspicious activity");
+```
+
+### **Avantajları:**
+
+1. ✅ **Tek adımda yönetici yetkisi** - Node kaydı = Rol ataması
+2. ✅ **Semantik** - "Manager" konsepti açıkça belirtilmiş
+3. ✅ **Takip edilebilir** - Hangi node'ların yönetici olduğu belli
+4. ✅ **Revoke edilebilir** - Node kaldırılınca rol da kaldırılabilir
+5. ✅ **Audit trail** - Yönetici işlemleri node bazında izlenebilir

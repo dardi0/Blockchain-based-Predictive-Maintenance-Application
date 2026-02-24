@@ -21,9 +21,9 @@
           "type": "uint256[2]"
         },
         {
-          "internalType": "uint256[]",
+          "internalType": "uint256[3]",
           "name": "public_inputs",
-          "type": "uint256[]"
+          "type": "uint256[3]"
         }
       ],
       "name": "verifySensorDataProof",

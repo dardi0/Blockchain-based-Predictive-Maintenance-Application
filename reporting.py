@@ -10,7 +10,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
+import os
+from pathlib import Path
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, confusion_matrix, precision_recall_curve, average_precision_score, matthews_corrcoef
+
+# Performans metrikleri klasörünü oluştur
+METRICS_DIR = Path("Performans_Metrikleri")
+METRICS_DIR.mkdir(exist_ok=True)
 
 # Config'ten import'lar
 from config import VisualizationConfig, TrainingConfig
@@ -47,7 +53,7 @@ def print_cv_results(cv_scores):
     print(f"│ {'Metrik':<18} │ {'Ortalama':<8} │ {'Std':<8} │ {'Min':<8} │ {'Max':<8} │")
     print(f"├{'─'*20}┼{'─'*10}┼{'─'*10}┼{'─'*10}┼{'─'*10}┤")
     
-    standard_metrics = ['accuracy', 'precision', 'recall', 'f1', 'auc', 'mcc']
+    standard_metrics = ['accuracy', 'precision', 'recall', 'f1', 'auc', 'mcc', 'entropy']
     for metric_name in standard_metrics:
         scores = cv_scores[metric_name]
         mean_score = np.mean(scores)
@@ -55,6 +61,8 @@ def print_cv_results(cv_scores):
         min_score = np.min(scores)
         max_score = np.max(scores)
         display_name = metric_name.capitalize().replace('Auc', 'AUC').replace('Mcc', 'MCC')
+        if metric_name == 'entropy':
+            display_name = 'Entropy'
         
         print(f"│ {display_name:<18} │ {mean_score:<8.4f} │ {std_score:<8.4f} │ {min_score:<8.4f} │ {max_score:<8.4f} │")
     
@@ -84,11 +92,17 @@ def print_cv_results(cv_scores):
     print(f"└{'─'*20}┴{'─'*10}┴{'─'*10}┴{'─'*10}┴{'─'*10}┘")
     
     # İyileşme analizi - Tüm metrikler için
-    accuracy_improvement = ((np.mean(cv_scores['accuracy_opt']) - np.mean(cv_scores['accuracy'])) / np.mean(cv_scores['accuracy'])) * 100
-    precision_improvement = ((np.mean(cv_scores['precision_opt']) - np.mean(cv_scores['precision'])) / np.mean(cv_scores['precision'])) * 100
-    recall_improvement = ((np.mean(cv_scores['recall_opt']) - np.mean(cv_scores['recall'])) / np.mean(cv_scores['recall'])) * 100
-    f1_improvement = ((np.mean(cv_scores['f1_opt']) - np.mean(cv_scores['f1'])) / np.mean(cv_scores['f1'])) * 100
-    mcc_improvement = ((np.mean(cv_scores['mcc_opt']) - np.mean(cv_scores['mcc'])) / abs(np.mean(cv_scores['mcc'])) * 100 if np.mean(cv_scores['mcc']) != 0 else 0)
+    # M3 FIX: Division by zero guards
+    mean_accuracy = np.mean(cv_scores['accuracy'])
+    mean_precision = np.mean(cv_scores['precision'])
+    mean_recall = np.mean(cv_scores['recall'])
+    mean_f1 = np.mean(cv_scores['f1'])
+
+    accuracy_improvement = ((np.mean(cv_scores['accuracy_opt']) - mean_accuracy) / mean_accuracy) * 100 if mean_accuracy != 0 else 0.0
+    precision_improvement = ((np.mean(cv_scores['precision_opt']) - mean_precision) / mean_precision) * 100 if mean_precision != 0 else 0.0
+    recall_improvement = ((np.mean(cv_scores['recall_opt']) - mean_recall) / mean_recall) * 100 if mean_recall != 0 else 0.0
+    f1_improvement = ((np.mean(cv_scores['f1_opt']) - mean_f1) / mean_f1) * 100 if mean_f1 != 0 else 0.0
+    mcc_improvement = ((np.mean(cv_scores['mcc_opt']) - np.mean(cv_scores['mcc'])) / abs(np.mean(cv_scores['mcc']))) * 100 if np.mean(cv_scores['mcc']) != 0 else 0
     
     print(f"\n⚡ OPTİMAL EŞİK İYİLEŞME ANALİZİ:")
     print(f"   • Accuracy İyileşme: %{accuracy_improvement:+.2f}")
@@ -129,11 +143,10 @@ def print_test_results(test_results, cv_scores):
 
     Args:
         test_results (dict): Test sonuçlarını içeren sözlük. Şu anahtarları içermeli:
-            - y_test (array): Gerçek test etiketleri
-            - y_pred (array): Test tahminleri (0.5 eşik)
-            - y_pred_prob (array): Test olasılıkları
-            - y_pred_opt (array): Test tahminleri (optimal eşik)
-            - optimal_threshold (float): Bulunan optimal eşik değeri
+            - y_true (array): Gerçek test etiketleri
+            - y_pred (array): Optimal eşik uygulanmış test tahminleri
+            - y_pred_proba (array): Test olasılıkları
+            - optimal_threshold (float): Kullanılan optimal eşik değeri
         cv_scores (dict): CV sonuçları (karşılaştırma için).
 
     Example:
@@ -160,6 +173,12 @@ def print_test_results(test_results, cv_scores):
     test_auc = roc_auc_score(y_test, y_pred_prob)
     test_auc_pr = average_precision_score(y_test, y_pred_prob)  # AUC-PR (Average Precision)
     test_mcc = matthews_corrcoef(y_test, y_pred)  # Matthews Correlation Coefficient
+    # Entropi (Shannon, bit) – model belirsizliği (ortalama)
+    try:
+        p_entropy = np.clip(np.array(y_pred_prob).flatten(), 1e-12, 1 - 1e-12)
+        test_entropy = float(np.mean(-(p_entropy * np.log2(p_entropy) + (1 - p_entropy) * np.log2(1 - p_entropy))))
+    except Exception:
+        test_entropy = float('nan')
     
     # Detaylı performans metrikleri (Optimal eşiği)
     test_accuracy_opt = accuracy_score(y_test, y_pred_opt)
@@ -168,9 +187,16 @@ def print_test_results(test_results, cv_scores):
     test_f1_opt = f1_score(y_test, y_pred_opt, zero_division=0)
     test_mcc_opt = matthews_corrcoef(y_test, y_pred_opt)  # MCC optimal eşik
     
-    # Confusion Matrix
+    # Confusion Matrix (0.5 eşiği)
     cm = confusion_matrix(y_test, y_pred)
     tn, fp, fn, tp = cm.ravel()
+
+    # Ek: Confusion Matrix (Optimal eşik) - metin olarak ek gösterim
+    cm_opt = confusion_matrix(y_test, y_pred_opt)
+    tn_o, fp_o, fn_o, tp_o = cm_opt.ravel()
+    print(f"\nTEST SETİ CONFUSION MATRIX (OPTİMAL EŞİK: {optimal_threshold:.3f}):")
+    print(f"TN={tn_o}  FP={fp_o}")
+    print(f"FN={fn_o}  TP={tp_o}")
     
     print(f"\n🎯 NİHAİ LSTM-CNN MODEL TEST PERFORMANSI ({TrainingConfig.DEFAULT_THRESHOLD} EŞİĞİ):")
     print(f"┌{'─'*25}┬{'─'*10}┬{'─'*10}┬{'─'*15}┐")
@@ -199,11 +225,16 @@ def print_test_results(test_results, cv_scores):
     print(f"└{'─'*25}┴{'─'*10}┴{'─'*10}┴{'─'*15}┘")
     
     # Optimal eşik iyileşme analizi - Tüm metrikler için
-    test_accuracy_improvement = ((test_accuracy_opt - test_accuracy) / test_accuracy) * 100
-    test_precision_improvement = ((test_precision_opt - test_precision) / test_precision) * 100
-    test_recall_improvement = ((test_recall_opt - test_recall) / test_recall) * 100
-    test_f1_improvement = ((test_f1_opt - test_f1) / test_f1) * 100
-    test_mcc_improvement = ((test_mcc_opt - test_mcc) / abs(test_mcc) * 100 if test_mcc != 0 else 0)
+    # Entropy özeti (Test vs CV)
+    if 'entropy' in cv_scores:
+        print(f"\nEntropy (Shannon, bit): Test={test_entropy:.4f} | CV Ort={np.mean(cv_scores['entropy']):.4f} | Fark={test_entropy - np.mean(cv_scores['entropy']):+8.4f}")
+
+    # M3 FIX: Division by zero guards
+    test_accuracy_improvement = ((test_accuracy_opt - test_accuracy) / test_accuracy) * 100 if test_accuracy != 0 else 0.0
+    test_precision_improvement = ((test_precision_opt - test_precision) / test_precision) * 100 if test_precision != 0 else 0.0
+    test_recall_improvement = ((test_recall_opt - test_recall) / test_recall) * 100 if test_recall != 0 else 0.0
+    test_f1_improvement = ((test_f1_opt - test_f1) / test_f1) * 100 if test_f1 != 0 else 0.0
+    test_mcc_improvement = ((test_mcc_opt - test_mcc) / abs(test_mcc)) * 100 if test_mcc != 0 else 0
     
     print(f"\n⚡ TEST SETİ OPTİMAL EŞİK İYİLEŞME ANALİZİ:")
     print(f"   • Accuracy İyileşme: %{test_accuracy_improvement:+.2f}")
@@ -222,8 +253,14 @@ def print_test_results(test_results, cv_scores):
     print(f"│ {'Arıza Var (1)':<18} │ {fn:<10,} │ {tp:<10,} │")
     print(f"└{'─'*20}┴{'─'*12}┴{'─'*12}┘")
 
-def plot_training_history(test_results):
-    """Model eğitim geçmişini görselleştirir"""
+    # PR eğrisi görseli ve optimal eşik işaretleme
+    try:
+        plot_pr_curve(test_results)
+    except Exception as _e:
+        pass
+
+def plot_training_history_old(test_results):
+    """Model eğitim geçmişini görselleştirir (ESKİ VERSİYON - kullanılmıyor)"""
     plt.style.use('default')
     
     # Training history'yi al
@@ -262,6 +299,9 @@ def plot_training_history(test_results):
         ax2.legend(fontsize=VisualizationConfig.LEGEND_FONT_SIZE)
     
     plt.tight_layout()
+    save_path = METRICS_DIR / 'training_history_old.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 Eski format eğitim grafiği kaydedildi: {save_path}")
     plt.show()
 
 def plot_fold_performance(cv_scores):
@@ -290,6 +330,9 @@ def plot_fold_performance(cv_scores):
     ax.set_ylim(0, 1)
     
     plt.tight_layout()
+    save_path = METRICS_DIR / 'fold_performance.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 Fold performans grafiği kaydedildi: {save_path}")
     plt.show()
 
 def plot_confusion_matrix(test_results):
@@ -317,10 +360,63 @@ def plot_confusion_matrix(test_results):
                 yticklabels=['Arıza Yok (0)', 'Arıza Var (1)'], ax=ax, 
                 cbar_kws={'label': 'Sayı'}, annot_kws={'size': 12, 'weight': 'bold'})
     ax.set_title('Test Seti Confusion Matrix', fontweight='bold', fontsize=VisualizationConfig.TITLE_FONT_SIZE, pad=20)
-    ax.set_xlabel('Gerçek Sınıf', fontweight='bold', fontsize=VisualizationConfig.LABEL_FONT_SIZE)
-    ax.set_ylabel('Tahmin Edilen Sınıf', fontweight='bold', fontsize=VisualizationConfig.LABEL_FONT_SIZE)
+    # scikit-learn confusion_matrix: satırlar gerçek (y), sütunlar tahmin (y^)
+    ax.set_xlabel('Tahmin Edilen Sınıf', fontweight='bold', fontsize=VisualizationConfig.LABEL_FONT_SIZE)
+    ax.set_ylabel('Gerçek Sınıf', fontweight='bold', fontsize=VisualizationConfig.LABEL_FONT_SIZE)
     
     plt.tight_layout()
+    save_path = METRICS_DIR / 'confusion_matrix.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 Confusion matrix grafiği kaydedildi: {save_path}")
+    plt.show()
+
+def plot_pr_curve(test_results):
+    """Precision-Recall eğrisini çizer ve optimal eşiği işaretler."""
+    y_test = test_results['y_true']
+    y_pred_prob = test_results['y_pred_proba']
+    t_opt = float(test_results['optimal_threshold'])
+
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_pred_prob)
+    # thresholds uzunluğu = len(precisions) - 1 olduğundan hizalama için [1:] kullanılır
+    prec = precisions[1:]
+    rec = recalls[1:]
+
+    # En yakın eşiği bul ve ilgili (P,R) noktasını işaretle
+    if thresholds.size > 0:
+        idx = int(np.argmin(np.abs(thresholds - t_opt)))
+        p_sel = float(prec[idx])
+        r_sel = float(rec[idx])
+    else:
+        p_sel, r_sel = float(precisions[-1]), float(recalls[-1])
+
+    ap = average_precision_score(y_test, y_pred_prob)
+
+    _, ax = plt.subplots(figsize=VisualizationConfig.FIGURE_SIZE_PR_CURVE)
+    colors = VisualizationConfig.COLORS
+    ax.plot(recalls, precisions, color=colors.get('pr_curve', '#E67E22'),
+            linewidth=VisualizationConfig.LINE_WIDTH, label=f'PR Eğrisi (AP = {ap:.3f})')
+
+    # Optimal eşiği işaretle
+    ax.scatter([r_sel], [p_sel], color='red', s=60, zorder=5,
+               label=f'Optimal Eşik = {t_opt:.3f}\n(P={p_sel:.2f}, R={r_sel:.2f})')
+
+    # Baseline (no-skill): pozitif prevalansı
+    pos_rate = np.mean(np.asarray(y_test).ravel())
+    ax.hlines(pos_rate, 0, 1, colors=colors.get('random_line', '#95A5A6'), linestyles='--',
+              label=f'No-skill (Pos Rate={pos_rate:.2f})')
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel('Recall', fontsize=VisualizationConfig.LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_ylabel('Precision', fontsize=VisualizationConfig.LABEL_FONT_SIZE, fontweight='bold')
+    ax.set_title('Precision-Recall Eğrisi', fontsize=VisualizationConfig.TITLE_FONT_SIZE, fontweight='bold')
+    ax.grid(True, alpha=VisualizationConfig.GRID_ALPHA)
+    ax.legend(fontsize=VisualizationConfig.LEGEND_FONT_SIZE, loc='best')
+
+    plt.tight_layout()
+    save_path = METRICS_DIR / 'precision_recall_curve.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"✅ PR eğrisi kaydedildi: {save_path}")
     plt.show()
 
 def plot_cv_vs_test_comparison(test_results, cv_scores):
@@ -364,6 +460,9 @@ def plot_cv_vs_test_comparison(test_results, cv_scores):
     ax.set_ylim(0, 1)
     
     plt.tight_layout()
+    save_path = METRICS_DIR / 'cv_vs_test_comparison.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 CV vs Test karşılaştırma grafiği kaydedildi: {save_path}")
     plt.show()
 
 def plot_roc_curve(test_results):
@@ -391,6 +490,9 @@ def plot_roc_curve(test_results):
     ax.grid(True, alpha=VisualizationConfig.GRID_ALPHA)
 
     plt.tight_layout()
+    save_path = METRICS_DIR / 'roc_curve.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 ROC Curve grafiği kaydedildi: {save_path}")
     plt.show()
 
 def plot_precision_recall_curve(test_results):
@@ -438,6 +540,9 @@ def plot_precision_recall_curve(test_results):
     ax.grid(True, alpha=VisualizationConfig.GRID_ALPHA)
 
     plt.tight_layout()
+    save_path = METRICS_DIR / 'precision_recall_curve.png'
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"💾 Precision-Recall Curve grafiği kaydedildi: {save_path}")
     plt.show()
 
 # reporting.py dosyasının sonuna eklenecek yeni fonksiyon
@@ -489,6 +594,174 @@ def raporla_performans_olcutleri(confusion_matrix):
 
     except Exception as e:
         return f"\n❌ Performans metrikleri hesaplanırken bir hata oluştu: {e}"
+
+def plot_training_history(history, save_path='training_history.png'):
+    """
+    Model eğitim geçmişini (loss ve accuracy) görselleştirir.
+    Training ve Validation loss'larını karşılaştırarak overfitting analizi yapar.
+    
+    Args:
+        history (dict): model.fit() tarafından döndürülen history.history
+        save_path (str): Grafiğin kaydedileceği dosya yolu
+    """
+    try:
+        # History'den metrikleri al
+        train_loss = history.get('loss', [])
+        val_loss = history.get('val_loss', [])
+        # Accuracy yerine PR AUC'i göster (mevcutsa); yoksa eski accuracy'ye düş
+        train_acc = history.get('pr_auc', []) or history.get('binary_accuracy', [])
+        val_acc = history.get('val_pr_auc', []) or history.get('val_binary_accuracy', [])
+        
+        if not train_loss or not val_loss:
+            print("⚠️ Loss değerleri bulunamadı, grafik çizilemiyor.")
+            return
+        
+        epochs = range(1, len(train_loss) + 1)
+        
+        # Loss farkını hesapla (overfitting analizi için)
+        final_train_loss = train_loss[-1]
+        final_val_loss = val_loss[-1]
+        loss_diff = final_val_loss - final_train_loss
+        loss_diff_percent = (loss_diff / final_train_loss) * 100 if final_train_loss > 0 else 0
+        
+        # Overfitting durumu belirleme
+        if loss_diff < 0.01:
+            overfitting_status = "✅ MÜKEMMEL! Sağlıklı eğitim"
+            status_color = 'green'
+        elif loss_diff < 0.03:
+            overfitting_status = "✅ İYİ! Kabul edilebilir"
+            status_color = 'blue'
+        elif loss_diff < 0.05:
+            overfitting_status = "⚠️ DİKKAT! Orta seviye overfitting"
+            status_color = 'orange'
+        elif loss_diff < 0.10:
+            overfitting_status = "❌ SORUN! Yüksek overfitting"
+            status_color = 'red'
+        else:
+            overfitting_status = "❌❌ CİDDİ SORUN! Çok yüksek overfitting"
+            status_color = 'darkred'
+        
+        # 2x1 subplot oluştur
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+        
+        # --- LOSS GRAFİĞİ ---
+        ax1.plot(epochs, train_loss, 'b-', linewidth=2, label='Training Loss', marker='o', markersize=3)
+        ax1.plot(epochs, val_loss, 'r-', linewidth=2, label='Validation Loss', marker='s', markersize=3)
+        
+        # Son değerleri vurgula
+        ax1.scatter(epochs[-1], train_loss[-1], color='blue', s=200, zorder=5, 
+                   edgecolors='black', linewidths=2)
+        ax1.scatter(epochs[-1], val_loss[-1], color='red', s=200, zorder=5, 
+                   edgecolors='black', linewidths=2)
+        
+        # Son değerleri göster
+        ax1.text(epochs[-1], train_loss[-1], f' {train_loss[-1]:.4f}', 
+                fontsize=10, va='center', ha='left', fontweight='bold', color='blue')
+        ax1.text(epochs[-1], val_loss[-1], f' {val_loss[-1]:.4f}', 
+                fontsize=10, va='center', ha='left', fontweight='bold', color='red')
+        
+        ax1.set_xlabel('Epoch', fontsize=12, fontweight='bold')
+        ax1.set_ylabel('Loss', fontsize=12, fontweight='bold')
+        ax1.set_title('📉 Training vs Validation Loss', fontsize=14, fontweight='bold')
+        ax1.legend(loc='upper right', fontsize=10)
+        ax1.grid(True, alpha=0.3)
+        
+        # Overfitting analizi metni ekle
+        textstr = f'Son Training Loss: {final_train_loss:.4f}\n'
+        textstr += f'Son Validation Loss: {final_val_loss:.4f}\n'
+        textstr += f'Fark: {loss_diff:.4f} ({loss_diff_percent:+.2f}%)\n'
+        textstr += f'\n{overfitting_status}'
+        
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+        ax1.text(0.02, 0.98, textstr, transform=ax1.transAxes, fontsize=9,
+                verticalalignment='top', bbox=props, family='monospace')
+        
+        # --- ACCURACY GRAFİĞİ ---
+        if train_acc and val_acc:
+            ax2.plot(epochs, train_acc, 'b-', linewidth=2, label='Training PR AUC', marker='o', markersize=3)
+            ax2.plot(epochs, val_acc, 'r-', linewidth=2, label='Validation PR AUC', marker='s', markersize=3)
+            
+            # Son değerleri vurgula
+            ax2.scatter(epochs[-1], train_acc[-1], color='blue', s=200, zorder=5, 
+                       edgecolors='black', linewidths=2)
+            ax2.scatter(epochs[-1], val_acc[-1], color='red', s=200, zorder=5, 
+                       edgecolors='black', linewidths=2)
+            
+            # Son değerleri göster
+            ax2.text(epochs[-1], train_acc[-1], f' {train_acc[-1]:.4f}', 
+                    fontsize=10, va='center', ha='left', fontweight='bold', color='blue')
+            ax2.text(epochs[-1], val_acc[-1], f' {val_acc[-1]:.4f}', 
+                    fontsize=10, va='center', ha='left', fontweight='bold', color='red')
+            
+            ax2.set_xlabel('Epoch', fontsize=12, fontweight='bold')
+            ax2.set_ylabel('PR AUC', fontsize=12, fontweight='bold')
+            ax2.set_title('📈 Training vs Validation PR AUC', fontsize=14, fontweight='bold')
+            ax2.legend(loc='lower right', fontsize=10)
+            ax2.grid(True, alpha=0.3)
+            
+            # Accuracy farkı analizi
+            final_train_acc = train_acc[-1]
+            final_val_acc = val_acc[-1]
+            acc_diff = final_train_acc - final_val_acc
+            acc_diff_percent = (acc_diff / final_train_acc) * 100 if final_train_acc > 0 else 0
+            
+            acc_textstr = f'Son Training Acc: {final_train_acc:.4f}\n'
+            acc_textstr += f'Son Validation Acc: {final_val_acc:.4f}\n'
+            acc_textstr += f'Fark: {acc_diff:.4f} ({acc_diff_percent:+.2f}%)'
+            
+            ax2.text(0.02, 0.02, acc_textstr, transform=ax2.transAxes, fontsize=9,
+                    verticalalignment='bottom', bbox=props, family='monospace')
+        
+        plt.suptitle('🎓 MODEL EĞİTİM GEÇMİŞİ VE OVERFİTTİNG ANALİZİ', 
+                     fontsize=16, fontweight='bold', y=1.02)
+        plt.tight_layout()
+        
+        # Dosyaya kaydet
+        full_save_path = METRICS_DIR / save_path
+        plt.savefig(full_save_path, dpi=300, bbox_inches='tight')
+        print(f"💾 Eğitim geçmişi grafiği kaydedildi: {full_save_path}")
+        
+        # Konsola özet yazdır
+        print(f"\n{'='*70}")
+        print(f"📊 EĞİTİM GEÇMİŞİ ANALİZİ")
+        print(f"{'='*70}")
+        print(f"📉 LOSS ANALİZİ:")
+        print(f"   • Son Training Loss:    {final_train_loss:.6f}")
+        print(f"   • Son Validation Loss:  {final_val_loss:.6f}")
+        print(f"   • Loss Farkı:           {loss_diff:.6f} ({loss_diff_percent:+.2f}%)")
+        print(f"   • Durum:                {overfitting_status}")
+        
+        if train_acc and val_acc:
+            print(f"\n📈 PR AUC ANALİZİ:")
+            print(f"   • Son Training PR AUC:  {final_train_acc:.6f}")
+            print(f"   • Son Validation PR AUC:{final_val_acc:.6f}")
+            print(f"   • PR AUC Farkı:         {acc_diff:.6f} ({acc_diff_percent:+.2f}%)")
+        
+        print(f"\n🎯 REGÜLARİZASYON DEĞERLENDİRMESİ:")
+        if abs(loss_diff) < 0.02:
+            print(f"   ✅ Dropout ve regülasyonlar mükemmel çalışıyor!")
+            print(f"   ✅ Model sağlıklı şekilde öğreniyor (generalize ediyor)")
+        elif abs(loss_diff) < 0.05:
+            print(f"   ✅ Regülasyonlar iyi çalışıyor, hafif overfitting var")
+            print(f"   ℹ️ Normal kabul edilebilir bir seviye")
+        else:
+            print(f"   ⚠️ Overfitting tespit edildi!")
+            print(f"   💡 Öneriler:")
+            print(f"      • Dropout oranlarını artırın (DROPOUT_RATES)")
+            print(f"      • L2 regularization ekleyin/artırın")
+            print(f"      • Early stopping patience'ı azaltın")
+            print(f"      • Model kapasitesini azaltın (daha az nöron)")
+            print(f"      • Daha fazla eğitim verisi toplayın")
+        
+        print(f"{'='*70}\n")
+        
+        plt.show()
+        
+    except Exception as e:
+        print(f"❌ Eğitim geçmişi grafiği oluşturulurken hata: {e}")
+        import traceback
+        traceback.print_exc()
+
 
 def plot_performans_olcutleri(confusion_matrix):
     """
@@ -574,12 +847,100 @@ def plot_performans_olcutleri(confusion_matrix):
         
         plt.tight_layout()
         plt.subplots_adjust(bottom=0.15)  # MCC için yer bırak
+        save_path = METRICS_DIR / 'performance_metrics.png'
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"💾 Performans metrikleri grafiği kaydedildi: {save_path}")
         plt.show()
         
         print("✅ Performans ölçütleri görselleştirildi!")
 
     except Exception as e:
         print(f"❌ Performans ölçütleri görselleştirme hatası: {e}")
+
+def plot_entropy_histogram(test_results, high_entropy_threshold: float = 0.8):
+    """Tahmin entropisi (Shannon, bit) dağılımını histogram olarak çizer.
+
+    Args:
+        test_results (dict): 'y_pred_proba' alanını içermelidir.
+        high_entropy_threshold (float): Yüksek belirsizlik eşiği (varsayılan 0.8 bit).
+    """
+    try:
+        y_pred_proba = test_results.get('y_pred_proba') if isinstance(test_results, dict) else None
+        if y_pred_proba is None:
+            print("Bilgi: test_results['y_pred_proba'] yok; entropi histogramı atlandı.")
+            return
+
+        p = np.clip(np.array(y_pred_proba).flatten(), 1e-12, 1 - 1e-12)
+        ent = -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
+        ent_mean = float(np.mean(ent))
+        p25, p50, p75 = [float(x) for x in np.percentile(ent, [25, 50, 75])]
+        frac_high = float(np.mean(ent >= high_entropy_threshold))
+
+        _, ax = plt.subplots(figsize=VisualizationConfig.FIGURE_SIZE_PR_CURVE)
+        ax.hist(ent, bins=30, color='#3498db', alpha=0.85, edgecolor='white')
+        ax.axvline(ent_mean, color='red', linestyle='--', linewidth=2, label=f'Ort: {ent_mean:.3f}')
+        ax.axvline(high_entropy_threshold, color='orange', linestyle=':', linewidth=2, label=f'Eşik: {high_entropy_threshold}')
+        ax.set_title('Tahmin Entropisi Dağılımı', fontsize=VisualizationConfig.TITLE_FONT_SIZE, fontweight='bold')
+        ax.set_xlabel('Entropy (bit)', fontsize=VisualizationConfig.LABEL_FONT_SIZE, fontweight='bold')
+        ax.set_ylabel('Frekans', fontsize=VisualizationConfig.LABEL_FONT_SIZE, fontweight='bold')
+        ax.grid(True, alpha=VisualizationConfig.GRID_ALPHA)
+        ax.legend(fontsize=VisualizationConfig.LEGEND_FONT_SIZE, loc='best')
+        plt.tight_layout()
+        save_path = METRICS_DIR / 'entropy_histogram.png'
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"💾 Entropi histogram grafiği kaydedildi: {save_path}")
+        plt.show()
+        print(f"Yüksek entropi oranı (>{high_entropy_threshold} bit): {frac_high:.2%}")
+        print(f"Entropy yüzdelikleri (bit): p25={p25:.3f}, p50={p50:.3f}, p75={p75:.3f}")
+    except Exception as e:
+        print(f"Entropi histogramı oluşturulurken hata: {e}")
+
+def print_high_entropy_samples(test_results, top_n: int = None, threshold: float = None):
+    """En yüksek entropili örnekleri tablo halinde yazdırır.
+
+    Args:
+        test_results (dict): 'y_pred_proba' ve opsiyonel 'y_true' içerebilir.
+        top_n (int): Listelenecek örnek sayısı. None ise config'ten alınır.
+        threshold (float): Yüksek entropi eşiği. None ise config'ten alınır.
+    """
+    try:
+        y_pred_proba = test_results.get('y_pred_proba') if isinstance(test_results, dict) else None
+        y_true = test_results.get('y_true') if isinstance(test_results, dict) else None
+        if y_pred_proba is None:
+            print("Bilgi: test_results['y_pred_proba'] yok; yüksek entropi listesi atlandı.")
+            return
+
+        if top_n is None or threshold is None:
+            try:
+                from config import VisualizationConfig
+                if top_n is None:
+                    top_n = getattr(VisualizationConfig, 'ENTROPY_TOP_N', 10)
+                if threshold is None:
+                    threshold = getattr(VisualizationConfig, 'ENTROPY_HIGH_THRESHOLD', 0.8)
+            except Exception:
+                top_n = top_n or 10
+                threshold = threshold or 0.8
+
+        p = np.clip(np.array(y_pred_proba).flatten(), 1e-12, 1 - 1e-12)
+        ent = -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
+        idx_sorted = np.argsort(-ent)
+        top_idx = idx_sorted[:top_n]
+
+        print("\nYüksek Entropili Örnekler (en belirsiz tahminler):")
+        header = f"{'Idx':>6}  {'Prob':>8}  {'Entropy(bit)':>14}  {'Y_true':>7}"
+        print(header)
+        print('-' * len(header))
+        for i in top_idx:
+            prob = float(p[i])
+            ent_i = float(ent[i])
+            y_t = int(y_true[i]) if y_true is not None else -1
+            print(f"{i:6d}  {prob:8.4f}  {ent_i:14.4f}  {y_t:7d}")
+
+        above = int(np.sum(ent >= threshold))
+        total = len(ent)
+        print(f"Toplam {above}/{total} örnek > {threshold} bit (oran: {above/total:.2%})")
+    except Exception as e:
+        print(f"Yüksek entropili örnekler listelenirken hata: {e}")
 
 def plot_all_results(cv_scores, test_results):
     """Model performansının tüm görselleştirmelerini kapsamlı olarak oluşturur.
@@ -618,8 +979,10 @@ def plot_all_results(cv_scores, test_results):
     if test_results:
         print_test_results(test_results, cv_scores)
     
-    # 3. Training history
-    plot_training_history(test_results)
+    # 3. Training history - YENİ DETAYLI VERSİYON
+    if test_results and 'history' in test_results:
+        print("\n🏋️‍♂️ Training History Grafiği oluşturuluyor...")
+        plot_training_history(test_results['history'], save_path='training_history.png')
     
     # 4. Fold bazında performans
     plot_fold_performance(cv_scores)
@@ -645,5 +1008,11 @@ def plot_all_results(cv_scores, test_results):
     
     # 9. Precision-Recall Curve
     plot_precision_recall_curve(test_results)
+    
+    # 10. Entropy Histogram
+    plot_entropy_histogram(test_results, VisualizationConfig.ENTROPY_HIGH_THRESHOLD)
+    
+    # 11. Yüksek Entropili Örnekler
+    print_high_entropy_samples(test_results)
     
     print(f"✅ Tüm görselleştirmeler tamamlandı!") 

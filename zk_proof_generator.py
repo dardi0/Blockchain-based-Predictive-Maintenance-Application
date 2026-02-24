@@ -20,9 +20,9 @@ from dataclasses import asdict
 from hybrid_storage_manager import SensorData, PredictionData, MaintenanceData
 
 # Logging yapılandırması (INFO, WARNING, ERROR açık)
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# logger.setLevel(logging.INFO)
 
 class ZKProofGenerator:
     """ZK-SNARK proof oluşturucu sınıf"""
@@ -38,9 +38,12 @@ class ZKProofGenerator:
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         
         self.sensor_circuit = self.circuits_dir / "sensor_data_proof.circom"
-        self.prediction_circuit = self.circuits_dir / "prediction_proof.circom" 
+        self.prediction_circuit = self.circuits_dir / "prediction_proof.circom"
         self.maintenance_circuit = self.circuits_dir / "maintenance_proof.circom"
-        
+        self.fault_circuit = self.circuits_dir / "fault_record_proof.circom"
+        self.training_circuit = self.circuits_dir / "training_record_proof.circom"
+        self.report_circuit = self.circuits_dir / "report_record_proof.circom"
+
         self._create_circuits()
     
     def _create_circuits(self):
@@ -151,6 +154,7 @@ template SensorDataProof() {
     basicCheck2.in[1] <== 0;
     
     validProof <== basicCheck1.out * basicCheck2.out;
+    validProof === 1;  // machineId > 0 ve timestamp > 0 kısıtlarını zorla
 }
 
 // Wrap to expose main-level inputs (Circom 2.x): only main's inputs count as public inputs
@@ -201,11 +205,12 @@ component main = Main();
         for circuit_path, circuit_code in circuits:
             # Dosya varsa üzerine yazma (mevcut devreyi koru)
             if circuit_path.exists():
-                logger.info(f"✅ Keeping existing circuit: {circuit_path.name}")
+                # logger.info(f"✅ Keeping existing circuit: {circuit_path.name}")
+                pass
             else:
                 with open(circuit_path, 'w', encoding='utf-8') as f:
                     f.write(circuit_code)
-                    logger.info(f"✅ Created circuit: {circuit_path.name}")
+                    # logger.info(f"✅ Created circuit: {circuit_path.name}")
     
 
     def _find_snarkjs_base_cmd(self) -> Optional[List[str]]:
@@ -261,15 +266,23 @@ component main = Main();
             ]
             result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=120, check=False)
             if result.returncode == 0:
-                logger.info(f"✅ Circuit compiled: {circuit_path.stem}")
+                # logger.info(f"✅ Circuit compiled: {circuit_path.stem}")
                 return True
             else:
                 error_message = result.stderr if result.stderr else result.stdout
-                logger.error(f"❌ Circuit compilation failed: {error_message.strip()}")
+                logger.error(
+                    f"❌ Circuit compilation failed: {error_message.strip()}",
+                    extra={"event_type": "circuit_compile_failed",
+                           "circuit_name": circuit_path.stem},
+                )
                 logger.error(f"   Command: {' '.join(compile_cmd)}")
                 return False
         except Exception as e:
-            logger.error(f"❌ Circuit compilation error: {e}")
+            logger.error(
+                f"❌ Circuit compilation error: {e}",
+                extra={"event_type": "circuit_compile_failed",
+                       "circuit_name": circuit_path.stem},
+            )
             return False
     
     def _calculate_witness(self, circuit_name: str, inputs: Dict) -> Optional[Path]:
@@ -308,7 +321,7 @@ component main = Main();
             if not witness_cmd:
                 return None
             cmd_display = ' '.join(str(part) for part in witness_cmd)
-            logger.info(f"🔒 Witness calculation command: {cmd_display}")
+            # logger.info(f"🔒 Witness calculation command: {cmd_display}")
             result = subprocess.run(
                 witness_cmd,
                 capture_output=True,
@@ -317,24 +330,36 @@ component main = Main();
                 check=False,
                 creationflags=self._no_window_flag
             )
-            logger.info(f"🔒 Witness calculation return code: {result.returncode}")
-            logger.info(f"🔒 Witness calculation stdout: {result.stdout}")
-            logger.info(f"🔒 Witness calculation stderr: {result.stderr}")
+            # logger.info(f"🔒 Witness calculation return code: {result.returncode}")
+            # logger.info(f"🔒 Witness calculation stdout: {result.stdout}")
+            # logger.info(f"🔒 Witness calculation stderr: {result.stderr}")
             
             if result.returncode == 0:
                 # Witness dosyasının gerçekten oluştuğunu kontrol et
                 if witness_file.exists():
-                    logger.info(f"✅ Witness calculated: {circuit_name}")
+                    # logger.info(f"✅ Witness calculated: {circuit_name}")
                     return witness_file
                 else:
-                    logger.error(f"❌ Witness file not created: {witness_file}")
+                    logger.error(
+                        f"❌ Witness file not created: {witness_file}",
+                        extra={"event_type": "witness_failed",
+                               "circuit_name": circuit_name},
+                    )
                     return None
             else:
-                logger.error(f"❌ Witness calculation failed: {result.stderr.strip()}")
+                logger.error(
+                    f"❌ Witness calculation failed: {result.stderr.strip()}",
+                    extra={"event_type": "witness_failed",
+                           "circuit_name": circuit_name},
+                )
                 return None
-                
+
         except Exception as e:
-            logger.error(f"❌ Witness calculation error: {e}")
+            logger.error(
+                f"❌ Witness calculation error: {e}",
+                extra={"event_type": "witness_failed",
+                       "circuit_name": circuit_name},
+            )
             return None
     
     def _perform_trusted_setup(self, circuit_name: str) -> bool:
@@ -346,15 +371,15 @@ component main = Main();
             if zkey_file.exists() and r1cs_file.exists():
                 if r1cs_file.stat().st_mtime > zkey_file.stat().st_mtime:
                     zkey_file.unlink()
-                    logger.info(f"🔄 R1CS updated; regenerating zkey for {circuit_name}")
+                    # logger.info(f"🔄 R1CS updated; regenerating zkey for {circuit_name}")
         except Exception:
             pass
         
         if zkey_file.exists():
-            logger.info(f"✅ ZKey already exists for {circuit_name}; reusing it.")
+            # logger.info(f"✅ ZKey already exists for {circuit_name}; reusing it.")
             return True
 
-        logger.info(f"🔒 Performing trusted setup for {circuit_name}... This may take a moment.")
+        # logger.info(f"🔒 Performing trusted setup for {circuit_name}... This may take a moment.")
         
         # Powers of Tau file - prefer prepared phase2 if available
         pot_prepared = self.temp_dir / "pot16_final_prepared.ptau"
@@ -383,13 +408,21 @@ component main = Main();
             )
         
             if result.returncode == 0:
-                logger.info(f"✅ Trusted setup successful for {circuit_name}")
+                # logger.info(f"✅ Trusted setup successful for {circuit_name}")
                 return True
             else:
-                logger.error(f"❌ Trusted setup failed: {result.stderr.strip()}")
+                logger.error(
+                    f"❌ Trusted setup failed: {result.stderr.strip()}",
+                    extra={"event_type": "trusted_setup_failed",
+                           "circuit_name": circuit_name},
+                )
                 return False
         except Exception as e:
-            logger.error(f"❌ Trusted setup error: {e}")
+            logger.error(
+                f"❌ Trusted setup error: {e}",
+                extra={"event_type": "trusted_setup_failed",
+                       "circuit_name": circuit_name},
+            )
             return False
     
     def _generate_proof_snarkjs(self, circuit_name: str, witness_file: Path) -> Optional[Dict]:
@@ -410,7 +443,7 @@ component main = Main();
             if not proof_cmd:
                 return None
             cmd_display = ' '.join(str(part) for part in proof_cmd)
-            logger.info(f"🔒 Proof generation command: {cmd_display}")
+            # logger.info(f"🔒 Proof generation command: {cmd_display}")
             result = subprocess.run(
                 proof_cmd,
                 capture_output=True,
@@ -419,9 +452,9 @@ component main = Main();
                 check=False,
                 creationflags=self._no_window_flag
             )
-            logger.info(f"🔒 Return code: {result.returncode}")
-            logger.info(f"🔒 stdout: {result.stdout}")
-            logger.info(f"🔒 stderr: {result.stderr}")
+            # logger.info(f"🔒 Return code: {result.returncode}")
+            # logger.info(f"🔒 stdout: {result.stdout}")
+            # logger.info(f"🔒 stderr: {result.stderr}")
         
             if result.returncode == 0:
                 with open(proof_file, 'r', encoding='utf-8') as f:
@@ -430,14 +463,21 @@ component main = Main();
                     public_inputs = json.load(f)
 
                 # commitmentHash artık gerekmiyor, zaten public inputs'ta var
-        
-                logger.info(f"✅ ZK proof generated: {circuit_name}")
+                # logger.info(f"✅ ZK proof generated: {circuit_name}")
                 return {'proof': proof_data, 'publicInputs': public_inputs}
             else:
-                logger.error(f"❌ Proof generation failed: {result.stderr.strip()}")
+                logger.error(
+                    f"❌ Proof generation failed: {result.stderr.strip()}",
+                    extra={"event_type": "zk_proof_failed",
+                           "circuit_name": circuit_name},
+                )
                 return None
         except Exception as e:
-            logger.error(f"❌ Proof generation error: {e}")
+            logger.error(
+                f"❌ Proof generation error: {e}",
+                extra={"event_type": "zk_proof_failed",
+                       "circuit_name": circuit_name},
+            )
             return None
 
 
@@ -472,9 +512,10 @@ component main = Main();
             success = circom_ok and snarkjs_ok
             
             if success:
-                logger.info("✅ Circom and snarkjs tools detected - Real ZK proofs enabled!")
-                logger.info(f"   Circom output: {circom_result.stdout.strip()[:50]}...")
-                logger.info(f"   snarkjs detected: True")
+                # logger.info("✅ Circom and snarkjs tools detected - Real ZK proofs enabled!")
+                # logger.info(f"   Circom output: {circom_result.stdout.strip()[:50]}...")
+                # logger.info(f"   snarkjs detected: True")
+                pass
             else:
                 logger.warning("❌ Circom/snarkjs tools not working properly - Using mock proofs")
             return success
@@ -492,15 +533,15 @@ component main = Main();
             # This matches our circuit: Poseidon(6) with [airTemp, processTemp, rotation, torque, toolWear, machineType]
             import subprocess
             sensor_values = [
-                int(sensor_data.air_temperature * 100),
-                int(sensor_data.process_temperature * 100),
-                int(sensor_data.rotational_speed),
+                int(sensor_data.air_temp * 100),
+                int(sensor_data.process_temp * 100),
+                int(sensor_data.rotation_speed),
                 int(sensor_data.torque * 100),
                 int(sensor_data.tool_wear),
                 mt_map.get(sensor_data.machine_type, 2)
             ]
             
-            logger.info(f"🔒 Computing Poseidon hash for sensor values: {sensor_values}")
+            # logger.info(f"🔒 Computing Poseidon hash for sensor values: {sensor_values}")
             
             # Use circomlibjs for %100 circuit compatibility
             try:
@@ -522,8 +563,8 @@ component main = Main();
                     check=True
                 )
                 data_commitment = int(result.stdout.strip())
-                logger.info(f"✅ Data commitment: {data_commitment}")
-                logger.info(f"   Hex: {hex(data_commitment)}")
+                # logger.info(f"✅ Data commitment: {data_commitment}")
+                # logger.info(f"   Hex: {hex(data_commitment)}")
             except subprocess.TimeoutExpired as timeout_err:
                 # Timeout but result may be in stdout
                 if timeout_err.stdout and timeout_err.stdout.strip():
@@ -562,10 +603,10 @@ component main = Main();
                 circuit_inputs['dataCommitment']
             ]
             
-            logger.info(f"🔒 Privacy Mode: {len(public_inputs_list)} public inputs (was 8)")
-            logger.info(f"   Public: machineId={circuit_inputs['machineId']}, timestamp={circuit_inputs['timestamp']}")
-            logger.info(f"   Commitment: {hex(circuit_inputs['dataCommitment'])[:16]}...")
-            logger.info(f"   Private: 6 sensor values hidden from blockchain")
+            # logger.info(f"🔒 Privacy Mode: {len(public_inputs_list)} public inputs (was 8)")
+            # logger.info(f"   Public: machineId={circuit_inputs['machineId']}, timestamp={circuit_inputs['timestamp']}")
+            # logger.info(f"   Commitment: {hex(circuit_inputs['dataCommitment'])[:16]}...")
+            # logger.info(f"   Private: 6 sensor values hidden from blockchain")
 
             # 2) Derle
             if not self._compile_circuit(self.sensor_circuit):
@@ -588,7 +629,7 @@ component main = Main();
                 return None
 
             # Do NOT override snarkjs public inputs; use as produced by snarkjs
-            logger.info(f"✅ Public inputs from snarkjs kept (count={len(public_inputs_list)})")
+            # logger.info(f"✅ Public inputs from snarkjs kept (count={len(public_inputs_list)})")
             return proof_data
         except Exception as e:
             logger.error(f"❌ Sensor proof generation (v2) error: {e}")
@@ -620,6 +661,34 @@ component main = Main();
                 model_hash_fe = int(hashlib.sha256((prediction.model_version or "model").encode()).hexdigest(), 16) % (2**254)
 
             ts = int(prediction.timestamp or time.time())
+            nonce = int(time.time()) % 100000
+
+            # Calculate predictionCommitment: Poseidon([prediction, confidence, nonce])
+            prediction_commitment = 0
+            try:
+                h_values = [prediction_int, confidence_int, nonce]
+                import subprocess, json
+                hash_cmd = f"""
+                const circomlibjs = require("circomlibjs");
+                (async () => {{
+                    const poseidon = await circomlibjs.buildPoseidon();
+                    const inputs = {json.dumps([str(v) for v in h_values])}.map(BigInt);
+                    const hash = poseidon(inputs);
+                    console.log(poseidon.F.toString(hash));
+                }})();
+                """
+                # Fallback to local node_modules if needed, expecting circomlibjs to be available
+                result = subprocess.run(
+                        ["node", "-e", hash_cmd],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        check=True
+                    )
+                prediction_commitment = int(result.stdout.strip())
+            except Exception as e:
+                logger.error(f"Poseidon hash for prediction failed: {e}")
+                return None
 
             circuit_inputs = {
                 'dataProofId': data_proof_id,
@@ -627,13 +696,15 @@ component main = Main();
                 'confidence': confidence_int,
                 'modelHash': int(model_hash_fe),
                 'timestamp': ts,
-                'nonce': int(time.time()) % 100000
+                'nonce': nonce,
+                'predictionCommitment': prediction_commitment
             }
 
             public_inputs_list = [
                 circuit_inputs['dataProofId'],
                 circuit_inputs['modelHash'],
-                circuit_inputs['timestamp']
+                circuit_inputs['timestamp'],
+                circuit_inputs['predictionCommitment']
             ]
 
             # Compile, setup, witness, prove
@@ -651,23 +722,225 @@ component main = Main();
             if not proof_data:
                 return None
 
-            logger.info(f"Using snarkjs-produced publicInputs (len={len(public_inputs_list)})")
+            # logger.info(f"Using snarkjs-produced publicInputs (len={len(public_inputs_list)})")
 
             return proof_data
         except Exception as e:
             logger.error(f"Prediction proof generation error: {e}")
             return None
 
-    
+    def _poseidon_js(self, values: list) -> int:
+        """circomlibjs üzerinden Poseidon hash hesapla (JS subprocess)."""
+        hash_cmd = f"""
+        const circomlibjs = require("circomlibjs");
+        (async () => {{
+            const poseidon = await circomlibjs.buildPoseidon();
+            const inputs = {json.dumps([str(v) for v in values])}.map(BigInt);
+            const hash = poseidon(inputs);
+            console.log(poseidon.F.toString(hash));
+        }})();
+        """
+        result = subprocess.run(
+            ["node", "-e", hash_cmd],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=True
+        )
+        return int(result.stdout.strip())
+
+    def generate_fault_record_proof(
+        self,
+        machine_id: int,
+        prediction: int,
+        prediction_prob: float,
+        timestamp: int
+    ) -> Optional[Dict]:
+        """Arıza tespiti için ZK proof üret.
+
+        Public inputs: [machineId, timestamp, faultCommitment]
+        Private inputs: prediction, predictionProb (0-10000), nonce
+        """
+        try:
+            prediction_prob_pct = int(prediction_prob * 10000)
+            nonce = int(time.time()) % 1000000
+
+            fault_commitment = self._poseidon_js([prediction, prediction_prob_pct, nonce])
+
+            circuit_inputs = {
+                'machineId':       int(machine_id),
+                'timestamp':       int(timestamp),
+                'faultCommitment': int(fault_commitment),
+                'prediction':      int(prediction),
+                'predictionProb':  prediction_prob_pct,
+                'nonce':           nonce,
+            }
+
+            if not self._compile_circuit(self.fault_circuit):
+                return None
+            if not self._perform_trusted_setup('fault_record_proof'):
+                return None
+            witness_file = self._calculate_witness('fault_record_proof', circuit_inputs)
+            if not witness_file:
+                return None
+            return self._generate_proof_snarkjs('fault_record_proof', witness_file)
+
+        except Exception as e:
+            logger.error(f"Fault record proof generation error: {e}")
+            return None
+
+    def generate_training_record_proof(
+        self,
+        model_hash_int: int,
+        hyperparams: dict,
+        timestamp: int
+    ) -> Optional[Dict]:
+        """Model eğitimi için ZK proof üret.
+
+        Public inputs: [modelHash, timestamp, hyperparamsCommitment]
+        Private inputs: 18 hiperparametre + nonce
+        """
+        try:
+            BN254_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+
+            # Model hash'i field elementine truncate et
+            model_hash_field = model_hash_int % BN254_PRIME
+
+            # Hiperparametreleri çıkar ve ölçekle
+            lr_scaled       = int(hyperparams.get('learning_rate', 0.001) * 1_000_000)
+            epochs          = int(hyperparams.get('epochs', 500))
+            batch_size      = int(hyperparams.get('batch_size', 64))
+            cv_splits       = int(hyperparams.get('cv_splits', 5))
+            early_stop_pat  = int(hyperparams.get('early_stop_patience', 120))
+            cv_lr_scaled    = int(hyperparams.get('cv_lr', hyperparams.get('learning_rate', 0.001)) * 1_000_000)
+            cv_epochs       = int(hyperparams.get('cv_epochs', 200))
+            cv_early_stop   = int(hyperparams.get('cv_early_stop_patience', 80))
+
+            cnn_filters_list = hyperparams.get('cnn_filters', [128])
+            cnn_filters  = int(cnn_filters_list[0]) if cnn_filters_list else 128
+            cnn_layers   = len(cnn_filters_list)
+            cnn_kernel   = int(hyperparams.get('cnn_kernel_size', 4))
+            cnn_dropout  = int(hyperparams.get('cnn_dropout', 0.3) * 10000)
+            cnn_pool     = int(hyperparams.get('cnn_pool_size', 2))
+
+            lstm_units_list = hyperparams.get('lstm_units', [128])
+            lstm_units   = int(lstm_units_list[0]) if lstm_units_list else 128
+            lstm_layers  = len(lstm_units_list)
+            lstm_dropout = int(hyperparams.get('lstm_dropout', 0.3) * 10000)
+
+            dense_units_list = hyperparams.get('dense_units', [32])
+            dense_units   = int(dense_units_list[0]) if dense_units_list else 32
+            dense_layers  = len(dense_units_list)
+            dense_dropout = int(hyperparams.get('dense_dropout', 0.4) * 10000)
+
+            threshold_map = {'f1': 1, 'fbeta': 2, 'f_beta': 2, 'recall_focused': 3, 'other': 4}
+            threshold_code = threshold_map.get(hyperparams.get('threshold_method', ''), 0)
+
+            nonce = int(time.time()) % 1000000
+
+            # 3 katmanlı Poseidon commitment (Python üzerinden JS)
+            h1 = self._poseidon_js([
+                lr_scaled, epochs, batch_size, cv_splits,
+                early_stop_pat, cv_lr_scaled, cv_epochs, cv_early_stop
+            ])
+            h2 = self._poseidon_js([
+                cnn_filters, cnn_layers, cnn_kernel, cnn_dropout,
+                cnn_pool, lstm_units, lstm_layers, lstm_dropout
+            ])
+            h3 = self._poseidon_js([dense_units, dense_layers, dense_dropout, threshold_code])
+            hyperparams_commitment = self._poseidon_js([h1, h2, h3, nonce])
+
+            circuit_inputs = {
+                'modelHash':             int(model_hash_field),
+                'timestamp':             int(timestamp),
+                'hyperparamsCommitment': int(hyperparams_commitment),
+                'lrScaled':              lr_scaled,
+                'epochs':                epochs,
+                'batchSize':             batch_size,
+                'cvSplits':              cv_splits,
+                'earlyStopPatience':     early_stop_pat,
+                'cvLrScaled':            cv_lr_scaled,
+                'cvEpochs':              cv_epochs,
+                'cvEarlyStopPatience':   cv_early_stop,
+                'cnnFilters':            cnn_filters,
+                'cnnLayers':             cnn_layers,
+                'cnnKernelSize':         cnn_kernel,
+                'cnnDropoutScaled':      cnn_dropout,
+                'cnnPoolSize':           cnn_pool,
+                'lstmUnits':             lstm_units,
+                'lstmLayers':            lstm_layers,
+                'lstmDropoutScaled':     lstm_dropout,
+                'denseUnits':            dense_units,
+                'denseLayers':           dense_layers,
+                'denseDropoutScaled':    dense_dropout,
+                'thresholdMethodCode':   threshold_code,
+                'nonce':                 nonce,
+            }
+
+            if not self._compile_circuit(self.training_circuit):
+                return None
+            if not self._perform_trusted_setup('training_record_proof'):
+                return None
+            witness_file = self._calculate_witness('training_record_proof', circuit_inputs)
+            if not witness_file:
+                return None
+            return self._generate_proof_snarkjs('training_record_proof', witness_file)
+
+        except Exception as e:
+            logger.error(f"Training record proof generation error: {e}")
+            return None
+
+    def generate_report_record_proof(
+        self,
+        report_data_hash_hex: str,
+        machine_count: int,
+        timestamp: int
+    ) -> Optional[Dict]:
+        """Rapor oluşturma için ZK proof üret.
+
+        Public inputs: [timestamp, reportCommitment]
+        Private inputs: reportHashField, machineCount, nonce
+        """
+        try:
+            BN254_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+
+            report_hash_int = int(report_data_hash_hex, 16) if report_data_hash_hex.startswith('0x') \
+                else int(report_data_hash_hex, 16)
+            report_hash_field = report_hash_int % BN254_PRIME
+
+            nonce = int(time.time()) % 1000000
+            report_commitment = self._poseidon_js([report_hash_field, int(machine_count), nonce])
+
+            circuit_inputs = {
+                'timestamp':        int(timestamp),
+                'reportCommitment': int(report_commitment),
+                'reportHashField':  int(report_hash_field),
+                'machineCount':     int(machine_count),
+                'nonce':            nonce,
+            }
+
+            if not self._compile_circuit(self.report_circuit):
+                return None
+            if not self._perform_trusted_setup('report_record_proof'):
+                return None
+            witness_file = self._calculate_witness('report_record_proof', circuit_inputs)
+            if not witness_file:
+                return None
+            return self._generate_proof_snarkjs('report_record_proof', witness_file)
+
+        except Exception as e:
+            logger.error(f"Report record proof generation error: {e}")
+            return None
+
 
 # Test
 if __name__ == "__main__":
     
     sensor_data_obj = SensorData(
         machine_id=1001,
-        air_temperature=298.1,
-        process_temperature=308.6,
-        rotational_speed=1551,
+        air_temp=298.1,
+        process_temp=308.6,
+        rotation_speed=1551,
         torque=42.8,
         tool_wear=0,
         machine_type="M",

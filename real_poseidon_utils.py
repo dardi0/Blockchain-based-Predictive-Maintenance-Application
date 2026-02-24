@@ -48,11 +48,12 @@ class RealPoseidonHasher:
                 # Log performance for first few calls
                 if self._call_count <= 3:
                     if self._first_call:
-                        logger.info(f"🔧 First Poseidon call (with build): {execution_time:.1f}ms")
+                        # logger.info(f"🔧 First Poseidon call (with build): {execution_time:.1f}ms")
                         self._first_call = False
                     else:
-                        logger.info(f"⚡ Subsequent Poseidon call: {execution_time:.1f}ms")
-                
+                        # logger.info(f"⚡ Subsequent Poseidon call: {execution_time:.1f}ms")
+                        pass
+
                 return result.stdout.strip()
             else:
                 logger.error(f"Poseidon command failed: {result.stderr}")

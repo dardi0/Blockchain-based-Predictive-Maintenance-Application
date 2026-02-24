@@ -36,24 +36,23 @@ class FilePaths:
 class ModelConfig:
     """🤖 LSTM-CNN Model konfigürasyonu"""
     # Model mimarisi 
-    CNN_FILTERS_PER_LAYER = [8]
+    CNN_FILTERS_PER_LAYER = [128, 256]
     CNN_KERNEL_SIZE = 4
     CNN_POOL_SIZE = 2
-    CNN_DROPOUT = 0.1
+    CNN_DROPOUT = 0.3
     CNN_ACTIVATION = 'relu'  
     
-    LSTM_UNITS_PER_LAYER = [8]
-    LSTM_DROPOUT = 0.1
+    LSTM_UNITS_PER_LAYER = [128, 256]
+    LSTM_DROPOUT = 0.3
     
-    DENSE_UNITS_PER_LAYER = [8]        
-    DENSE_DROPOUT = 0.1
+    DENSE_UNITS_PER_LAYER = [32, 64, 16]        
+    DENSE_DROPOUT = 0.4
     DENSE_ACTIVATION = 'tanh'
     
     # Optimizasyon - ADAM
-    LEARNING_RATE = 0.001   
+    LEARNING_RATE = 0.001  
     OPTIMIZER = 'adam'
     LOSS_FUNCTION = 'binary_crossentropy'
-    METRICS = ['binary_accuracy']
 
 # --- EĞİTİM PARAMETRELERİ ---
 class TrainingConfig:
@@ -71,8 +70,8 @@ class TrainingConfig:
     DROP_COLUMNS = ['UDI', 'Product ID', 'TWF', 'HDF', 'PWF', 'OSF', 'RNF']
     
     # Model eğitimi
-    EPOCHS = 10
-    FINAL_MODEL_EPOCHS = 30
+    EPOCHS = 200
+    FINAL_MODEL_EPOCHS = 500
     BATCH_SIZE = 64
     VALIDATION_SPLIT = 0.2
     
@@ -83,76 +82,45 @@ class TrainingConfig:
     EARLY_STOPPING_RESTORE_BEST = True
     
     # Threshold optimization
-    THRESHOLD_RANGE_START = 0.1
-    THRESHOLD_RANGE_END = 0.9
-    THRESHOLD_RANGE_STEP = 0.01
     DEFAULT_THRESHOLD = 0.5
+    THRESHOLD_OPTIMIZATION_METHOD = 'f1'  # F1-Score maksimizasyonu ('f1', 'f_beta', 'recall_focused')
+    F_BETA_VALUE = 2.0  # Sadece 'f_beta' yöntemi için kullanılır
+    MIN_PRECISION_THRESHOLD = 0.2  # Minimum %20 precision korunarak recall maksimize edilir
     
-    # SMOTE (DEVRE DIŞI - CLASS WEIGHT kullanımına geçildi)
-    # SMOTE_RANDOM_STATE = 42
-
-# --- GUI KONFİGÜRASYONU ---
-class GUIConfig:
-    """🖥️ Kullanıcı arayüzü konfigürasyonu"""
-    # Ana pencere
-    WINDOW_WIDTH = 1000
-    WINDOW_HEIGHT = 700
-    WINDOW_TITLE = "🔧 LSTM-CNN Arıza Tespit Sistemi"
-    BACKGROUND_COLOR = '#f0f0f0'
+    # SMOTE (Synthetic Minority Oversampling Technique)
+    USE_SMOTE = True  # SMOTE kullanımını aktif/pasif eder
+    SMOTE_RANDOM_STATE = 42  # SMOTE için random state
+    SMOTE_K_NEIGHBORS = 5  # SMOTE k-neighbors parametresi
     
-    # Font ayarları
-    TITLE_FONT_SIZE = 16
-    LABEL_FONT_SIZE = 10
-    BUTTON_FONT_SIZE = 12
-    TITLE_FONT_WEIGHT = "bold"
-    BUTTON_FONT_WEIGHT = "bold"
-    
-    # Renkler
-    PRIMARY_COLOR = '#2c3e50'
-    SECONDARY_COLOR = '#ecf0f1'
-    SUCCESS_COLOR = '#27ae60'
-    ERROR_COLOR = '#e74c3c'
-    WARNING_COLOR = '#f39c12'
-    INFO_COLOR = '#3498db'
-    
-    # Sensör varsayılan değerleri
-    DEFAULT_AIR_TEMP = 0
-    DEFAULT_PROCESS_TEMP = 0
-    DEFAULT_ROTATION_SPEED = 0
-    DEFAULT_TORQUE = 0
-    DEFAULT_TOOL_WEAR = 0
-    DEFAULT_MACHINE_TYPE = "M (Medium - %30)"
-    
-    # Sensör min/max aralıkları (AI4I2020)
-    MIN_AIR_TEMP = 295.0
-    MAX_AIR_TEMP = 305.0
-    MIN_PROCESS_TEMP = 305.0
-    MAX_PROCESS_TEMP = 315.0
-    MIN_ROTATION_SPEED = 1000
-    MAX_ROTATION_SPEED = 3000
-    MIN_TORQUE = 3.0
-    MAX_TORQUE = 77.0
-    MIN_TOOL_WEAR = 0
-    MAX_TOOL_WEAR = 300
-    
-    # Ek renkler
-    TEXT_COLOR = '#2c3e50'
-    
-    # Threading
-    QUEUE_CHECK_INTERVAL = 100  # ms
 
 # --- BLOCKCHAIN KONFİGÜRASYONU ---
 class BlockchainConfig:
     """🔗 Blockchain konfigürasyonu"""
     # Network ayarları
     DEFAULT_NETWORK = "ZKSYNC_ERA"
-    
-    # Gas ayarları
+
+    # Gas ayarları - Default limitler (dynamic estimation tercih edilir)
     SENSOR_DATA_GAS_LIMIT = 800000
     PREDICTION_GAS_LIMIT = 800000
     SENSOR_DATA_GAS_PRICE_GWEI = 0.25
     PREDICTION_GAS_PRICE_GWEI = 0.25
-    
+
+    # Yeni ZK kayıt işlemleri için gas limitleri
+    FAULT_RECORD_GAS_LIMIT    = 300000
+    TRAINING_RECORD_GAS_LIMIT = 300000
+    REPORT_RECORD_GAS_LIMIT   = 300000
+
+    # Deployment ve VK setup için gas limitleri
+    VERIFIER_DEPLOY_GAS_LIMIT = 3000000
+    VK_UPLOAD_GAS_LIMIT = 5000000
+    CONTRACT_UPDATE_GAS_LIMIT = 1000000
+    NODE_REGISTER_GAS_LIMIT = 500000
+
+    # Gas estimation ayarları
+    GAS_ESTIMATION_BUFFER = 1.2  # %20 buffer
+    GAS_PRICE_BUFFER = 1.1  # %10 buffer
+    USE_DYNAMIC_GAS_ESTIMATION = True  # True = estimate_gas kullan, False = hardcoded limit
+
     # Transaction ayarları
     TRANSACTION_TIMEOUT = 120
     
@@ -207,6 +175,10 @@ class VisualizationConfig:
     LEGEND_FONT_SIZE = 12
     TITLE_FONT_SIZE = 16
     LABEL_FONT_SIZE = 14
+
+    # Entropi analiz ayarları
+    ENTROPY_HIGH_THRESHOLD = 0.8  # bit
+    ENTROPY_TOP_N = 10            # listelenecek en yüksek entropili örnek sayısı
 
 # --- ARIZA ANALİZ KONFİGÜRASYONU ---
 class FailureAnalysisConfig:
@@ -312,11 +284,38 @@ class PerformanceConfig:
     ENABLE_CACHING = True
     CACHE_SIZE_MB = 500
 
+class DatabaseConfig:
+    """Database Configuration"""
+    DB_NAME = os.getenv("POSTGRES_DB", "pdm_db")
+    DB_USER = os.getenv("POSTGRES_USER", "postgres")
+    DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+    DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    DB_PORT = os.getenv("POSTGRES_PORT", "5432")
+    
+    # Connection string for SQLAlchemy or other ORMs if needed
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# --- CHAINLINK KONFİGÜRASYONU ---
+class ChainlinkConfig:
+    """Chainlink Automation konfigurasyonu"""
+    BACKEND_ORACLE_ADDRESS = os.getenv("BACKEND_ORACLE_ADDRESS")
+    AUTOMATION_ADDRESS = os.getenv(
+        "CHAINLINK_AUTOMATION_ADDRESS",
+        "0x8347784a2aA45D3b51958793B932EC8B673E8c67"
+    )
+    ORACLE_PRIVATE_KEY = (
+        os.getenv("CHAINLINK_AUTOMATION_PRIVATE_KEY")
+        or os.getenv("CONTRACT_OWNER_PRIVATE_KEY")
+    )
+    POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "30"))
+    DEPLOYMENT_INFO_PATH = Path("chainlink_deployment_info.json")
+    FAILURE_THRESHOLD = 7000  # 70.00% confidence
+
 # --- GÜVENLIK KONFİGÜRASYONU ---
 class SecurityConfig:
     """🔐 Güvenlik konfigürasyonu"""
     # API rate limiting
-    MAX_REQUESTS_PER_MINUTE = 60
+    MAX_REQUESTS_PER_MINUTE = 600
     
     # Input validation
     MAX_INPUT_LENGTH = 1000
@@ -341,7 +340,19 @@ class EnvConfig:
     
     @staticmethod
     def get_PRIVATE_KEY():
-        return os.getenv("PRIVATE_KEY")
+        return os.getenv("PRIVATE_KEY") or os.getenv("CONTRACT_OWNER_PRIVATE_KEY")
+
+    @staticmethod
+    def get_MANAGER_PRIVATE_KEY():
+        return os.getenv("MANAGER_PRIVATE_KEY")
+
+    @staticmethod
+    def get_ENGINEER_PRIVATE_KEY():
+        return os.getenv("ENGINEER_PRIVATE_KEY")
+
+    @staticmethod
+    def get_OPERATOR_PRIVATE_KEY():
+        return os.getenv("OPERATOR_PRIVATE_KEY")
 
 # --- YARDıMCı FONKSİYONLAR ---
 class ConfigUtils:
@@ -378,8 +389,13 @@ class ConfigUtils:
             errors.append(f"Dataset dosyası bulunamadı: {FilePaths.DATASET_PATH}")
         
         # Environment değişken kontrolü
-        if not EnvConfig.get_PRIVATE_KEY():
-            errors.append("Private_Key environment değişkeni eksik")
+        if not any([
+            EnvConfig.get_MANAGER_PRIVATE_KEY(),
+            EnvConfig.get_ENGINEER_PRIVATE_KEY(),
+            EnvConfig.get_OPERATOR_PRIVATE_KEY(),
+            EnvConfig.get_PRIVATE_KEY()
+        ]):
+            errors.append("Herhangi bir private key tanımlı değil (MANAGER/ENGINEER/OPERATOR/PRIVATE_KEY)")
         
         # RPC URL kontrolü
         rpc_url = ConfigUtils.get_current_rpc_url()

@@ -327,8 +327,8 @@ pragma solidity ^0.8.20;
 contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
 
     // --- ROLE DEFINITIONS ---
-    bytes32 public constant SUPER_ADMIN_ROLE = keccak256("SUPER_ADMIN_ROLE");
-    bytes32 public constant SYSTEM_ADMIN_ROLE = keccak256("SYSTEM_ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant NODE_MANAGER_ROLE = keccak256("NODE_MANAGER_ROLE");
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
 
@@ -467,8 +467,8 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     modifier onlyNodeOwnerOrAdmin(bytes32 nodeId) {
         require(
             nodes[nodeId].owner == msg.sender ||
-            hasRole[msg.sender][SYSTEM_ADMIN_ROLE] ||
-            hasRole[msg.sender][SUPER_ADMIN_ROLE] ||
+            hasRole[msg.sender][MANAGER_ROLE] ||
+            hasRole[msg.sender][ADMIN_ROLE] ||
             owner() == msg.sender,
             "AccessControl: Not node owner or admin"
         );
@@ -494,14 +494,14 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
         _transferOwnership(_initialAdmin);
 
         // ─░lk rolleri olu┼ştur
-        _createRole(SUPER_ADMIN_ROLE);
-        _createRole(SYSTEM_ADMIN_ROLE);
+        _createRole(ADMIN_ROLE);
+        _createRole(MANAGER_ROLE);
         _createRole(NODE_MANAGER_ROLE);
         _createRole(AUDITOR_ROLE);
 
         // Initial admin'e s├╝per admin rol├╝ ver
-        _grantRole(SUPER_ADMIN_ROLE, _initialAdmin);
-        _grantRole(SYSTEM_ADMIN_ROLE, _initialAdmin);
+        _grantRole(ADMIN_ROLE, _initialAdmin);
+        _grantRole(MANAGER_ROLE, _initialAdmin);
 
         // Contract'─▒ yetkili ├ğa─ş─▒r─▒c─▒ olarak ekle
         authorizedCallers[address(this)] = true;
@@ -749,7 +749,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
      */
     function approveAccessRequest(
         bytes32 requestId
-    ) external whenNotPaused onlyRole(SYSTEM_ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
         AccessRequest storage request = accessRequests[requestId];
         require(request.requestId != bytes32(0), "AccessControl: Request does not exist");
         require(!request.isApproved, "AccessControl: Request already approved");
@@ -779,7 +779,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function denyAccessRequest(
         bytes32 requestId,
         string calldata reason
-    ) external whenNotPaused onlyRole(SYSTEM_ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
         AccessRequest storage request = accessRequests[requestId];
         require(request.requestId != bytes32(0), "AccessControl: Request does not exist");
         require(!request.isApproved, "AccessControl: Request already approved");
@@ -799,7 +799,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function revokeAccess(
         bytes32 nodeId,
         bytes32 targetResource
-    ) external whenNotPaused onlyValidNode(nodeId) onlyRole(SYSTEM_ADMIN_ROLE) {
+    ) external whenNotPaused onlyValidNode(nodeId) onlyRole(MANAGER_ROLE) {
         nodePermissions[nodeId][targetResource] = false;
 
         // Audit log olu┼ştur
@@ -813,7 +813,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Yeni rol olu┼şturma
      */
-    function createRole(bytes32 role) external onlyRole(SUPER_ADMIN_ROLE) {
+    function createRole(bytes32 role) external onlyRole(ADMIN_ROLE) {
         _createRole(role);
     }
 
@@ -826,7 +826,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Rol verme
      */
-    function grantRole(bytes32 role, address account) external onlyRole(SUPER_ADMIN_ROLE) {
+    function grantRole(bytes32 role, address account) external onlyRole(ADMIN_ROLE) {
         _grantRole(role, account);
     }
 
@@ -845,7 +845,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Rol iptal etme
      */
-    function revokeRole(bytes32 role, address account) external onlyRole(SUPER_ADMIN_ROLE) {
+    function revokeRole(bytes32 role, address account) external onlyRole(ADMIN_ROLE) {
         require(hasRole[account][role], "AccessControl: Account does not have role");
 
         hasRole[account][role] = false;
@@ -872,7 +872,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
         bytes32 nodeId,
         bytes32 targetResource,
         string calldata reason
-    ) external onlyRole(SUPER_ADMIN_ROLE) {
+    ) external onlyRole(ADMIN_ROLE) {
         require(nodeExists[nodeId], "AccessControl: Node does not exist");
 
         // ├ûnce mevcut status al
@@ -926,7 +926,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function blacklistNode(
         bytes32 nodeId,
         string calldata reason
-    ) external onlyRole(SYSTEM_ADMIN_ROLE) onlyValidNode(nodeId) {
+    ) external onlyRole(MANAGER_ROLE) onlyValidNode(nodeId) {
         // E─şer aktifse saya├ğ azalt
         if (nodes[nodeId].status == NodeStatus.ACTIVE) {
             if (activeNodeCount > 0) {
@@ -947,7 +947,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function unblacklistNode(
         bytes32 nodeId,
         string calldata reason
-    ) external onlyRole(SUPER_ADMIN_ROLE) onlyValidNode(nodeId) {
+    ) external onlyRole(ADMIN_ROLE) onlyValidNode(nodeId) {
         // E─şer ┼şu an blacklisted ise ve status ACTIVE de─şilse active yap ve saya├ğ artt─▒r
         bool wasBlacklisted = nodes[nodeId].isBlacklisted;
         NodeStatus oldStatus = nodes[nodeId].status;
@@ -1031,14 +1031,14 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Yetkili ├ğa─ş─▒r─▒c─▒ ekleme
      */
-    function addAuthorizedCaller(address caller) external onlyRole(SUPER_ADMIN_ROLE) {
+    function addAuthorizedCaller(address caller) external onlyRole(ADMIN_ROLE) {
         authorizedCallers[caller] = true;
     }
 
     /**
      * @dev Yetkili ├ğa─ş─▒r─▒c─▒ ├ğ─▒karma
      */
-    function removeAuthorizedCaller(address caller) external onlyRole(SUPER_ADMIN_ROLE) {
+    function removeAuthorizedCaller(address caller) external onlyRole(ADMIN_ROLE) {
         authorizedCallers[caller] = false;
     }
 
@@ -1049,7 +1049,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
         uint256 _defaultAccessDuration,
         uint256 _maxNodesPerAddress,
         bool _requireApprovalForAccess
-    ) external onlyRole(SUPER_ADMIN_ROLE) {
+    ) external onlyRole(ADMIN_ROLE) {
         defaultAccessDuration = _defaultAccessDuration;
         maxNodesPerAddress = _maxNodesPerAddress;
         requireApprovalForAccess = _requireApprovalForAccess;
@@ -1058,14 +1058,14 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Acil durum durdurma
      */
-    function emergencyPause() external onlyRole(SUPER_ADMIN_ROLE) {
+    function emergencyPause() external onlyRole(ADMIN_ROLE) {
         _pause();
     }
 
     /**
      * @dev Sistemi tekrar ba┼şlatma
      */
-    function unpause() external onlyRole(SUPER_ADMIN_ROLE) {
+    function unpause() external onlyRole(ADMIN_ROLE) {
         _unpause();
     }
 
@@ -1099,7 +1099,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function batchUpdateNodeStatus(
         bytes32[] calldata nodeIds,
         NodeStatus newStatus
-    ) external onlyRole(SYSTEM_ADMIN_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         for (uint i = 0; i < nodeIds.length; ++i) {
             bytes32 id = nodeIds[i];
             if (nodeExists[id]) {
@@ -1124,7 +1124,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function batchRevokeAccess(
         bytes32[] calldata nodeIds,
         bytes32 targetResource
-    ) external onlyRole(SYSTEM_ADMIN_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         for (uint i = 0; i < nodeIds.length; ++i) {
             if (nodeExists[nodeIds[i]]) {
                 nodePermissions[nodeIds[i]][targetResource] = false;

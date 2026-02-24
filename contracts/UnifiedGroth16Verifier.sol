@@ -31,8 +31,18 @@ library PairingU {
 contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
     using PairingU for *;
 
+    constructor() Ownable(msg.sender) {}
+
     // ----------------- Dinamik VK Yapısı (Prediction/Maintenance) -----------------
-    enum CircuitType { SENSOR_DATA, PREDICTION, MAINTENANCE, LEGACY }
+    enum CircuitType {
+        SENSOR_DATA,      // 0
+        PREDICTION,       // 1
+        MAINTENANCE,      // 2
+        LEGACY,           // 3
+        FAULT_RECORD,     // 4
+        TRAINING_RECORD,  // 5
+        REPORT_RECORD     // 6
+    }
     struct DynVK {
         PairingU.G1Point alpha;
         PairingU.G2Point beta;
@@ -43,6 +53,26 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
     }
     mapping(CircuitType => DynVK) public circuitKeys;
 
+    // ----------------- VK Timelock -----------------
+    uint256 public constant VK_CHANGE_DELAY = 48 hours;
+
+    struct PendingVK {
+        PairingU.G1Point alpha;
+        PairingU.G2Point beta;
+        PairingU.G2Point gamma;
+        PairingU.G2Point delta;
+        PairingU.G1Point[] IC;
+        uint256 proposedAt;
+        bool exists;
+    }
+    mapping(CircuitType => PendingVK) private pendingVKChanges;
+
+    event VKSet(CircuitType indexed circuitType, uint256 icLength);
+    event VKChangeProposed(CircuitType indexed circuitType, uint256 icLength, uint256 executeAfter);
+    event VKChangeExecuted(CircuitType indexed circuitType, uint256 icLength);
+    event VKChangeCancelled(CircuitType indexed circuitType);
+
+    /// @notice Set VK for initial setup only (when VK is not yet set for this circuit).
     function setCircuitVerifyingKey(
         CircuitType circuitType,
         PairingU.G1Point memory alpha,
@@ -51,13 +81,77 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         PairingU.G2Point memory delta,
         PairingU.G1Point[] memory IC
     ) external onlyOwner {
+        require(!circuitKeys[circuitType].isSet, "VK already set; use propose/execute flow");
         require(IC.length > 0, "IC empty");
+        _applyVK(circuitType, alpha, beta, gamma, delta, IC);
+        emit VKSet(circuitType, IC.length);
+    }
+
+    /// @notice Propose a VK change (timelock starts). Requires VK to be already set.
+    function proposeVKChange(
+        CircuitType circuitType,
+        PairingU.G1Point memory alpha,
+        PairingU.G2Point memory beta,
+        PairingU.G2Point memory gamma,
+        PairingU.G2Point memory delta,
+        PairingU.G1Point[] memory IC
+    ) external onlyOwner {
+        require(circuitKeys[circuitType].isSet, "VK not set; use setCircuitVerifyingKey");
+        require(IC.length > 0, "IC empty");
+
+        PendingVK storage p = pendingVKChanges[circuitType];
+        delete p.IC;
+        p.alpha = alpha;
+        p.beta = beta;
+        p.gamma = gamma;
+        p.delta = delta;
+        for (uint i = 0; i < IC.length; i++) { p.IC.push(IC[i]); }
+        p.proposedAt = block.timestamp;
+        p.exists = true;
+
+        emit VKChangeProposed(circuitType, IC.length, block.timestamp + VK_CHANGE_DELAY);
+    }
+
+    /// @notice Execute a pending VK change after the timelock has elapsed.
+    function executeVKChange(CircuitType circuitType) external onlyOwner {
+        PendingVK storage p = pendingVKChanges[circuitType];
+        require(p.exists, "No pending VK change");
+        require(block.timestamp >= p.proposedAt + VK_CHANGE_DELAY, "Timelock not elapsed");
+
+        _applyVK(circuitType, p.alpha, p.beta, p.gamma, p.delta, p.IC);
+        emit VKChangeExecuted(circuitType, p.IC.length);
+
+        delete pendingVKChanges[circuitType];
+    }
+
+    /// @notice Cancel a pending VK change.
+    function cancelVKChange(CircuitType circuitType) external onlyOwner {
+        require(pendingVKChanges[circuitType].exists, "No pending VK change");
+        delete pendingVKChanges[circuitType];
+        emit VKChangeCancelled(circuitType);
+    }
+
+    /// @notice Check pending VK proposal status for a circuit.
+    function getPendingVKChange(CircuitType circuitType) external view returns (bool exists, uint256 proposedAt, uint256 executeAfter, uint256 icLength) {
+        PendingVK storage p = pendingVKChanges[circuitType];
+        if (!p.exists) return (false, 0, 0, 0);
+        return (true, p.proposedAt, p.proposedAt + VK_CHANGE_DELAY, p.IC.length);
+    }
+
+    function _applyVK(
+        CircuitType circuitType,
+        PairingU.G1Point memory alpha,
+        PairingU.G2Point memory beta,
+        PairingU.G2Point memory gamma,
+        PairingU.G2Point memory delta,
+        PairingU.G1Point[] memory IC
+    ) private {
         delete circuitKeys[circuitType].IC;
         circuitKeys[circuitType].alpha = alpha;
         circuitKeys[circuitType].beta = beta;
         circuitKeys[circuitType].gamma = gamma;
         circuitKeys[circuitType].delta = delta;
-        for (uint i=0;i<IC.length;i++){ circuitKeys[circuitType].IC.push(IC[i]); }
+        for (uint i = 0; i < IC.length; i++) { circuitKeys[circuitType].IC.push(IC[i]); }
         circuitKeys[circuitType].isSet = true;
     }
 
@@ -79,6 +173,14 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         return _baseVerify(circuitKeys[CircuitType.MAINTENANCE], a, b, c, public_inputs);
     }
 
+    /// @dev G2 SWAP CONVENTION (H-3 safety documentation):
+    /// The EVM bn256 pairing precompile expects G2 coordinates in (x_im, x_re, y_im, y_re) order,
+    /// while snarkjs exports VK G2 points in (x_re, x_im, y_re, y_im) order.
+    /// RULE: Each verification path MUST apply exactly ONE swap to both proof B and VK G2 points.
+    /// - verifySensorDataProof (3-input): swaps B in Solidity, calls inherited verifyProof (no swap) = 1 swap total
+    /// - _baseVerify (prediction/maintenance): swaps B + VK G2 via _swapG2 in Solidity = 1 swap total
+    /// - Adapter contracts: swap B before calling this.verifyProof (no swap) = 1 swap total
+    /// NEVER chain adapters with verifySensorDataProof or _baseVerify — that would cause a double-swap.
     function _swapG2(PairingU.G2Point memory g) internal pure returns (PairingU.G2Point memory) {
         return PairingU.G2Point([g.X[1], g.X[0]], [g.Y[1], g.Y[0]]);
     }
@@ -95,6 +197,7 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
 
         PairingU.G1Point memory pA = PairingU.G1Point(a[0], a[1]);
         // pB: EVM precompile sırasına göre swap
+        // SECURITY (H6): Swap G2 coordinates to match snarkjs/circom standard [y, x]
         PairingU.G2Point memory pB = PairingU.G2Point([b[0][1], b[0][0]],[b[1][1], b[1][0]]);
         PairingU.G1Point memory pC = PairingU.G1Point(c[0], c[1]);
 
@@ -103,42 +206,72 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
             vk_x = PairingU.G1_add(vk_x, PairingU.G1_mul(vk.IC[i+1], public_inputs[i]));
         }
 
-        // Pairing input derleme (0x08)
-        PairingU.G1Point[4] memory p1s = [
-            PairingU.G1_neg(pA),
-            vk.alpha,
-            vk_x,
-            pC
-        ];
-        PairingU.G2Point[4] memory p2s = [
-            pB,
-            _swapG2(vk.beta),
-            _swapG2(vk.gamma),
-            _swapG2(vk.delta)
-        ];
+        // SECURITY FIX: Single deterministic verification (snarkjs standard)
+        // Using VK swapped ordering which matches snarkjs export format
+        // This prevents proof malleability by enforcing single valid G2 ordering
+        return _pairingCheck(
+            PairingU.G1_neg(pA), pB,
+            vk.alpha, _swapG2(vk.beta),
+            vk_x, _swapG2(vk.gamma),
+            pC, _swapG2(vk.delta)
+        );
+    }
 
-        uint256 len = p1s.length;
-        uint256 inputSize = len * 6 * 32;
+    function _pairingCheck(
+        PairingU.G1Point memory nA,
+        PairingU.G2Point memory pB,
+        PairingU.G1Point memory alpha,
+        PairingU.G2Point memory beta,
+        PairingU.G1Point memory vk_x,
+        PairingU.G2Point memory gamma,
+        PairingU.G1Point memory pC,
+        PairingU.G2Point memory delta
+    ) internal view returns (bool) {
+        uint256 inputSize = 4 * 6 * 32; // 4 pairs * (G1(2) + G2(4)) * 32 bytes
         bytes memory input = new bytes(inputSize);
         assembly {
-            let p_input := add(input, 0x20)
-            let p_p1s := p1s
-            let p_p2s := p2s
-            for { let i := 0 } lt(i, len) { i := add(i, 1) } {
-                let dest := add(p_input, mul(i, 192))
-                let p1 := add(p_p1s, mul(i, 0x40))
-                let p2 := add(p_p2s, mul(i, 0x80))
-                mstore(dest, mload(p1))
-                mstore(add(dest,32), mload(add(p1,32)))
-                mstore(add(dest,64), mload(p2))
-                mstore(add(dest,96), mload(add(p2,32)))
-                mstore(add(dest,128), mload(add(p2,64)))
-                mstore(add(dest,160), mload(add(p2,96)))
-            }
+            let base := add(input, 0x20)
+            // (-A, B)
+            mstore(base, mload(nA))
+            mstore(add(base, 32), mload(add(nA, 32)))
+            mstore(add(base, 64), mload(pB))
+            mstore(add(base, 96), mload(add(pB, 32)))
+            mstore(add(base, 128), mload(add(pB, 64)))
+            mstore(add(base, 160), mload(add(pB, 96)))
+            // (alpha, beta)
+            let off1 := add(base, 192)
+            mstore(off1, mload(alpha))
+            mstore(add(off1, 32), mload(add(alpha, 32)))
+            mstore(add(off1, 64), mload(beta))
+            mstore(add(off1, 96), mload(add(beta, 32)))
+            mstore(add(off1, 128), mload(add(beta, 64)))
+            mstore(add(off1, 160), mload(add(beta, 96)))
+            // (vk_x, gamma)
+            let off2 := add(base, 384)
+            mstore(off2, mload(vk_x))
+            mstore(add(off2, 32), mload(add(vk_x, 32)))
+            mstore(add(off2, 64), mload(gamma))
+            mstore(add(off2, 96), mload(add(gamma, 32)))
+            mstore(add(off2, 128), mload(add(gamma, 64)))
+            mstore(add(off2, 160), mload(add(gamma, 96)))
+            // (C, delta)
+            let off3 := add(base, 576)
+            mstore(off3, mload(pC))
+            mstore(add(off3, 32), mload(add(pC, 32)))
+            mstore(add(off3, 64), mload(delta))
+            mstore(add(off3, 96), mload(add(delta, 32)))
+            mstore(add(off3, 128), mload(add(delta, 64)))
+            mstore(add(off3, 160), mload(add(delta, 96)))
         }
         bool ok;
-        assembly { ok := staticcall(gas(), 0x08, add(input,0x20), inputSize, 0, 0) }
-        return ok;
+        bytes memory outBuf = new bytes(32);
+        assembly {
+            ok := staticcall(gas(), 0x08, add(input, 0x20), inputSize, add(outBuf, 0x20), 0x20)
+        }
+        if (!ok) return false;
+        uint256 res;
+        assembly { res := mload(add(outBuf, 0x20)) }
+        return res == 1;
     }
 
     function verifySensorDataProof(
@@ -147,20 +280,66 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         uint[2] memory c,
         uint[] memory input
     ) public view returns (bool) {
-        // Prefer dynamic VK if set (supports variable public input length, e.g., 3)
+        // For 3 public inputs, use inherited Groth16Verifier3 with inner_swap on B
+        if (input.length == 3) {
+            uint[3] memory pub3;
+            pub3[0] = input[0];
+            pub3[1] = input[1];
+            pub3[2] = input[2];
+            // Apply inner_swap to B coordinates for Groth16Verifier3 compatibility
+            uint[2][2] memory b_swapped = [[b[0][1], b[0][0]], [b[1][1], b[1][0]]];
+            // Call inherited verifyProof from Groth16Verifier3
+            return this.verifyProof(a, b_swapped, c, pub3);
+        }
+        // Fallback to dynamic VK if set
         if (circuitKeys[CircuitType.SENSOR_DATA].isSet) {
             return _baseVerify(circuitKeys[CircuitType.SENSOR_DATA], a, b, c, input);
         }
-        // Fallback to legacy snarkjs verifier path which expects exactly 8 public inputs
-        if (input.length != 8) return false;
-        uint[8] memory pub;
-        for (uint i=0;i<8;i++){ pub[i]=input[i]; }
-        bytes memory data = abi.encodeWithSignature(
-            "verifyProof(uint256[2],uint256[2][2],uint256[2],uint256[8])",
-            a, b, c, pub
-        );
-        (bool ok, bytes memory ret) = address(this).staticcall(data);
-        if (!ok || ret.length == 0) return false;
-        return abi.decode(ret, (bool));
+        return false;
+    }
+
+    function verifyFaultRecordProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[] memory public_inputs
+    ) public view returns (bool) {
+        return _baseVerify(circuitKeys[CircuitType.FAULT_RECORD], a, b, c, public_inputs);
+    }
+
+    function verifyTrainingRecordProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[] memory public_inputs
+    ) public view returns (bool) {
+        return _baseVerify(circuitKeys[CircuitType.TRAINING_RECORD], a, b, c, public_inputs);
+    }
+
+    function verifyReportRecordProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[] memory public_inputs
+    ) public view returns (bool) {
+        return _baseVerify(circuitKeys[CircuitType.REPORT_RECORD], a, b, c, public_inputs);
+    }
+
+    // --- Diagnostics: IC size and points ---
+    function getICLength(CircuitType circuitType) external view returns (uint256) {
+        DynVK storage vk = circuitKeys[circuitType];
+        require(vk.isSet, "VK not set");
+        return vk.IC.length;
+    }
+
+    function getICPoint(
+        CircuitType circuitType,
+        uint256 index
+    ) external view returns (uint256 X, uint256 Y) {
+        DynVK storage vk = circuitKeys[circuitType];
+        require(vk.isSet, "VK not set");
+        require(index < vk.IC.length, "IC idx");
+        PairingU.G1Point storage p = vk.IC[index];
+        return (p.X, p.Y);
     }
 }

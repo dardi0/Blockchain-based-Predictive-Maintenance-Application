@@ -1,0 +1,37 @@
+[Unit]
+Description=PDM Automation Event Listener (ZK-SNARK / zkSync Era)
+Documentation=https://github.com/your-repo/pdm
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pdm
+Group=pdm
+
+WorkingDirectory=/opt/pdm
+# .env dosyasındaki tüm değişkenleri yükler
+EnvironmentFile=/opt/pdm/.env
+
+ExecStart=/opt/pdm/.venv/bin/python automation_event_listener.py
+
+# --- Yeniden başlatma politikası ---
+# on-failure: exit code != 0 ise yeniden başlat
+# always:     her durumda yeniden başlat (KeyboardInterrupt hariç)
+Restart=on-failure
+RestartSec=15
+# 10 başarısız deneme içinde 5 dakika içinde olursa servisi durdur
+StartLimitBurst=10
+StartLimitIntervalSec=300
+
+# --- Kaynak sınırları ---
+# RPC polling + ZK proof gen için yeterli
+LimitNOFILE=65536
+
+# --- Log yönetimi (journald) ---
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pdm-event-listener
+
+[Install]
+WantedBy=multi-user.target

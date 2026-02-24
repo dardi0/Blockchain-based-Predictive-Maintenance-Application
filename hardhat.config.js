@@ -17,14 +17,18 @@ module.exports = {
     },
   },
 
-  defaultNetwork: "zkSyncSepolia",
+  defaultNetwork: "hardhat",
 
   networks: {
+    hardhat: {
+      zksync: false,  // Disable zkSync for local testing
+      allowUnlimitedContractSize: true,  // Allow large contracts for testing
+    },
     zkSyncSepolia: {
       url: process.env.ZKSYNC_ERA_RPC_URL,   // Infura URL
       ethNetwork: "sepolia",                 // L1 bağlantısı
       zksync: true,
-      accounts: [process.env.PRIVATE_KEY],
+      accounts: [process.env.CONTRACT_OWNER_PRIVATE_KEY || process.env.PRIVATE_KEY],
       verifyURL: "https://explorer.sepolia.era.zksync.dev/contract_verification",
     },
   },
@@ -34,8 +38,9 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1,  // Low runs value for smaller bytecode
       },
+      viaIR: true,  // Enable IR-based compilation for complex contracts
     },
   },
 };

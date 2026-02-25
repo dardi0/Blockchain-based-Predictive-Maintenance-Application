@@ -909,3 +909,28 @@ class PdMDatabaseManager(DatabaseConnection):
             return None
         finally:
             self.return_connection(conn)
+
+    def get_maintenance_records(self, machine_id: int = None, limit: int = 100) -> List[Dict]:
+        """Bakım kayıtlarını getir"""
+        conn = self.get_connection()
+        if not conn:
+            return []
+        try:
+            with conn.cursor() as cursor:
+                if machine_id:
+                    cursor.execute(
+                        "SELECT * FROM maintenance_records WHERE machine_id = %s ORDER BY created_at DESC LIMIT %s",
+                        (machine_id, limit)
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT * FROM maintenance_records ORDER BY created_at DESC LIMIT %s",
+                        (limit,)
+                    )
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"❌ Bakım kayıtları getirme hatası: {e}")
+            return []
+        finally:
+            self.return_connection(conn)

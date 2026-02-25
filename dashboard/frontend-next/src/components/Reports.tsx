@@ -4,8 +4,9 @@ import React, { useEffect, useState, memo } from 'react';
 import { api } from '../services/api';
 import { useDashboard } from './DashboardShell';
 import { SavedReport, MachineStatus } from '../types';
-import { FileText, Calendar, User, ChevronRight, X, Download, Activity, AlertTriangle, CheckCircle, Clock, Code, Plus, Loader2 } from 'lucide-react';
+import { FileText, Calendar, User, ChevronRight, X, Download, Activity, AlertTriangle, CheckCircle, Clock, Code, Plus, Loader2, GitCompare, FileDown } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { ReportCompareModal } from './ReportCompareModal';
 
 const COLORS = {
     operational: '#10b981',
@@ -18,9 +19,12 @@ function Reports() {
     const [reports, setReports] = useState<SavedReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
     const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
     const [showRawJson, setShowRawJson] = useState(false);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [selectedForCompare, setSelectedForCompare] = useState<Set<number>>(new Set());
+    const [compareReports, setCompareReports] = useState<[SavedReport, SavedReport] | null>(null);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setNotification({ message, type });
@@ -100,6 +104,48 @@ function Reports() {
         URL.revokeObjectURL(url);
     };
 
+    const handleExportPDF = async () => {
+        if (!user) return;
+        setExportingPdf(true);
+        try {
+            const blob = await api.exportReportPDF(7, undefined, user.address);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pdm_report_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification('PDF report downloaded successfully.', 'success');
+        } catch (err) {
+            console.error('PDF export failed:', err);
+            showNotification('Failed to export PDF. Check if reportlab is installed on backend.', 'error');
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
+    const toggleCompareSelection = (report: SavedReport) => {
+        setSelectedForCompare(prev => {
+            const next = new Set(prev);
+            if (next.has(report.id)) {
+                next.delete(report.id);
+            } else if (next.size < 2) {
+                next.add(report.id);
+            }
+            return next;
+        });
+    };
+
+    const handleCompare = () => {
+        const ids = Array.from(selectedForCompare);
+        if (ids.length !== 2) return;
+        const rA = reports.find(r => r.id === ids[0]);
+        const rB = reports.find(r => r.id === ids[1]);
+        if (rA && rB) setCompareReports([rA, rB]);
+    };
+
     const getReportData = () => {
         if (!selectedReport?.content) return null;
         const content = selectedReport.content;
@@ -139,7 +185,7 @@ function Reports() {
                 </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <div className="p-1.5 rounded-lg bg-[var(--accent-primary)]/15 border border-[var(--accent-primary)]/30">
@@ -149,20 +195,51 @@ function Reports() {
                     </h2>
                     <p className="text-white/40 mt-1 text-sm">Archive of system snapshots and generated reports.</p>
                 </div>
-                <button
-                    onClick={handleGenerateReport}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent-primary)]/20 hover:bg-[var(--accent-primary)]/30 border border-[var(--accent-primary)]/40 text-[var(--accent-highlight)] text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                    {saving ? 'Generating...' : 'Generate Report'}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {selectedForCompare.size === 2 && (
+                        <button
+                            onClick={handleCompare}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-sm font-medium transition-all"
+                        >
+                            <GitCompare size={16} />
+                            Compare Selected
+                        </button>
+                    )}
+                    {selectedForCompare.size > 0 && selectedForCompare.size < 2 && (
+                        <span className="text-xs text-white/40 px-3">Select 1 more to compare</span>
+                    )}
+                    <button
+                        onClick={handleExportPDF}
+                        disabled={exportingPdf}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] text-white/60 hover:text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {exportingPdf ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                        {exportingPdf ? 'Generating...' : 'Export PDF'}
+                    </button>
+                    <button
+                        onClick={handleGenerateReport}
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent-primary)]/20 hover:bg-[var(--accent-primary)]/30 border border-[var(--accent-primary)]/40 text-[var(--accent-highlight)] text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                        {saving ? 'Generating...' : 'Generate Report'}
+                    </button>
+                </div>
             </div>
+
+            {selectedForCompare.size > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+                    <GitCompare size={13} />
+                    {selectedForCompare.size} of 2 reports selected for comparison
+                    <button onClick={() => setSelectedForCompare(new Set())} className="ml-auto text-white/40 hover:text-white">Clear</button>
+                </div>
+            )}
 
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b border-white/[0.07] bg-white/[0.02]">
                         <tr>
+                            <th className="px-4 py-4 w-10" />
                             <th className="px-6 py-4 text-[10px] font-bold text-white/30 uppercase tracking-widest">Title</th>
                             <th className="px-6 py-4 text-[10px] font-bold text-white/30 uppercase tracking-widest">Created By</th>
                             <th className="px-6 py-4 text-[10px] font-bold text-white/30 uppercase tracking-widest">Date</th>
@@ -171,34 +248,48 @@ function Reports() {
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
                         {reports.length > 0 ? (
-                            reports.map((report) => (
-                                <tr key={report.id} className="hover:bg-white/[0.03] transition-colors">
-                                    <td className="px-6 py-4 font-medium text-white">
-                                        {report.title}
-                                    </td>
-                                    <td className="px-6 py-4 text-white/40 flex items-center gap-2">
-                                        <User size={14} />
-                                        {report.created_by || 'System'}
-                                    </td>
-                                    <td className="px-6 py-4 text-white/40">
-                                        <div className="flex items-center gap-2 font-mono text-xs">
-                                            <Calendar size={14} />
-                                            {new Date(report.created_at).toLocaleString()}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleViewReport(report)}
-                                            className="inline-flex items-center gap-1 text-[var(--accent-highlight)] hover:underline"
-                                        >
-                                            View <ChevronRight size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                            reports.map((report) => {
+                                const isSelected = selectedForCompare.has(report.id);
+                                const canSelect = selectedForCompare.size < 2 || isSelected;
+                                return (
+                                    <tr key={report.id} className={`hover:bg-white/[0.03] transition-colors ${isSelected ? 'bg-emerald-500/5' : ''}`}>
+                                        <td className="px-4 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                disabled={!canSelect}
+                                                onChange={() => toggleCompareSelection(report)}
+                                                className="w-4 h-4 accent-emerald-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                                                title="Select for comparison"
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-white">{report.title}</td>
+                                        <td className="px-6 py-4 text-white/40">
+                                            <div className="flex items-center gap-2">
+                                                <User size={14} />
+                                                {report.created_by || 'System'}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-white/40">
+                                            <div className="flex items-center gap-2 font-mono text-xs">
+                                                <Calendar size={14} />
+                                                {new Date(report.created_at).toLocaleString()}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => handleViewReport(report)}
+                                                className="inline-flex items-center gap-1 text-[var(--accent-highlight)] hover:underline"
+                                            >
+                                                View <ChevronRight size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         ) : (
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center text-white/30">
+                                <td colSpan={5} className="px-6 py-12 text-center text-white/30">
                                     No reports archived yet.{' '}
                                     <button
                                         onClick={handleGenerateReport}
@@ -215,6 +306,14 @@ function Reports() {
             </div>
 
             {/* Modal for Report Details */}
+            {compareReports && (
+                <ReportCompareModal
+                    reportA={compareReports[0]}
+                    reportB={compareReports[1]}
+                    onClose={() => { setCompareReports(null); setSelectedForCompare(new Set()); }}
+                />
+            )}
+
             {selectedReport && reportData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
                     <div className="relative w-full max-w-5xl max-h-[90vh] rounded-2xl border border-white/[0.08] bg-[#0c1322]/95 backdrop-blur-xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-zoom-in">

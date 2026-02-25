@@ -169,3 +169,4 @@ fastapi
 uvicorn[standard]
 psycopg2-binary
 python-json-logger>=3.2.1
+reportlab>=4.0.0

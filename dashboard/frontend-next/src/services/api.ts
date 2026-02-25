@@ -544,6 +544,88 @@ export const api = {
         }
     },
 
+    async getFailureModes(): Promise<{ failure_modes: unknown[] }> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/failure-modes`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch failure modes');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getToolWearTrend(days: number = 14): Promise<{ machines: unknown[]; critical_threshold: number }> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/tool-wear-trend?days=${days}`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch tool wear trend');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getRULEstimates(): Promise<{ rul_estimates: unknown[] }> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/rul`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch RUL estimates');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getMaintenanceTimeline(days: number = 90): Promise<{ events: unknown[]; total: number }> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/maintenance-timeline?days=${days}`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch maintenance timeline');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getAnomalyFrequency(days: number = 30): Promise<{ machines: string[]; metrics: string[]; data: unknown[] }> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/anomaly-frequency?days=${days}`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch anomaly frequency');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getKPIMetrics(): Promise<unknown> {
+        try {
+            const response = await fetch(`${API_URL}/analytics/kpi`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch KPI metrics');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async exportReportPDF(days: number = 7, machineId?: number, walletAddress?: string): Promise<Blob> {
+        let url = `${API_URL}/export/report/pdf?days=${days}`;
+        if (machineId) url += `&machine_id=${machineId}`;
+        const response = await fetch(url, {
+            headers: buildHeaders(walletAddress),
+        });
+        if (!response.ok) throw new Error('Failed to export PDF');
+        return await response.blob();
+    },
+
     // ========== MAINTENANCE ==========
 
     async getMaintenanceSchedule(): Promise<MaintenanceTask[]> {

@@ -18,7 +18,10 @@ import {
     ActivityFeed,
     CalculationInfoModal,
     NotificationToast,
+    KPICards,
+    RULCards,
 } from './dashboard/index';
+import { KPIData, RULEstimate } from '../types';
 
 interface DashboardProps {
     machines: Machine[];
@@ -39,6 +42,8 @@ const Dashboard: React.FC<DashboardProps> = ({ machines }) => {
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [kpiData, setKpiData] = useState<KPIData | null>(null);
+    const [rulEstimates, setRulEstimates] = useState<RULEstimate[]>([]);
 
     // Show notification helper
     const showNotification = (message: string, type: 'success' | 'error') => {
@@ -61,6 +66,23 @@ const Dashboard: React.FC<DashboardProps> = ({ machines }) => {
         const interval = setInterval(fetchActivity, 30000);
         return () => clearInterval(interval);
     }, [user]);
+
+    // Fetch KPI and RUL data
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                const [kpi, rul] = await Promise.all([
+                    api.getKPIMetrics(),
+                    api.getRULEstimates(),
+                ]);
+                setKpiData(kpi as KPIData);
+                setRulEstimates(((rul as any).rul_estimates || []) as RULEstimate[]);
+            } catch (err) {
+                console.error('Failed to fetch KPI/RUL data:', err);
+            }
+        };
+        fetchAnalytics();
+    }, []);
 
     // Save report handler
     const handleSaveReport = async () => {
@@ -169,6 +191,9 @@ const Dashboard: React.FC<DashboardProps> = ({ machines }) => {
                         healthy={operationalMachines.length}
                     />
 
+                    {/* KPI Cards */}
+                    {kpiData && <KPICards data={kpiData} />}
+
                     {/* Pie + Gauge Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <StatusPieChart
@@ -199,6 +224,18 @@ const Dashboard: React.FC<DashboardProps> = ({ machines }) => {
                     <ActivityFeed activities={activities} />
                 </div>
             </div>
+
+            {/* RUL Cards */}
+            {rulEstimates.length > 0 && (
+                <div>
+                    <h3 className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3">
+                        Remaining Useful Life — Tool Wear Estimates
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <RULCards estimates={rulEstimates} />
+                    </div>
+                </div>
+            )}
 
             {/* Notification Toast */}
             {notification && (

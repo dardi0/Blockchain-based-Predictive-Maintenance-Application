@@ -303,6 +303,76 @@ export interface NotificationItem {
     action_url?: string;
 }
 
+// ============ ANALYTICS TYPES ============
+
+export interface FailureModeData {
+    machine_id: number;
+    machine_type: string;
+    total_failures: number;
+    TWF: number;
+    HDF: number;
+    PWF: number;
+    OSF: number;
+    RNF: number;
+}
+
+export interface ToolWearDay {
+    day: string;
+    avg_wear: number;
+    max_wear: number;
+}
+
+export interface ToolWearMachine {
+    machine_id: number;
+    machine_type: string;
+    data: ToolWearDay[];
+}
+
+export interface RULEstimate {
+    machine_id: number;
+    machine_type: string;
+    current_wear: number;
+    daily_rate: number;
+    estimated_days: number | null;
+    estimated_date: string | null;
+    status: 'GOOD' | 'WARNING' | 'CRITICAL' | 'EXCEEDED' | 'INSUFFICIENT_DATA';
+    critical_threshold: number;
+}
+
+export interface MaintenanceEvent {
+    id: number;
+    machine_id: number;
+    type: string;
+    description: string;
+    technician: string;
+    timestamp: string;
+}
+
+export interface AnomalyFrequencyItem {
+    machine_id: string;
+    metric: string;
+    week: string;
+    count: number;
+    severity_avg: number;
+}
+
+export interface KPIData {
+    overall: {
+        mtbf_hours: number;
+        mttr_hours: number;
+        false_alarm_rate: number;
+        oee_proxy: number;
+    };
+    machines: {
+        machine_id: number;
+        machine_type: string;
+        mtbf_hours: number;
+        failure_count: number;
+        false_alarm_rate: number;
+        oee_proxy: number;
+    }[];
+}
+
 export const defaultUserSettings: UserSettings = {
     profile: {
         displayName: '',

@@ -51,11 +51,10 @@ def get_automation_refs():
 CHAINLINK_AUTOMATION_API_KEY = os.getenv("CHAINLINK_AUTOMATION_API_KEY", "")
 
 if not CHAINLINK_AUTOMATION_API_KEY:
-    logger.critical(
-        "SECURITY WARNING: CHAINLINK_AUTOMATION_API_KEY is not set. "
-        "All automation write endpoints (generate-proof, create-maintenance-task) "
-        "are publicly accessible without authentication! "
-        "Set CHAINLINK_AUTOMATION_API_KEY in your .env file immediately."
+    logger.debug(
+        "CHAINLINK_AUTOMATION_API_KEY not set — "
+        "generate-proof and create-maintenance-task endpoints require auth if called externally. "
+        "Not needed when using BackendOracleConsumer pattern only."
     )
 
 

@@ -61,17 +61,24 @@ module.exports = async function (hre) {
     const reportInterval = 86400; // 1 day
     const failureThreshold = 7000; // 70%
 
-    // Get subscription ID
+    // Get subscription ID — must be set before deployment
     let subscriptionId = parseInt(CHAINLINK_CONFIG.subscriptionId);
+    const forceFlag = process.argv.includes("--force");
     if (!subscriptionId || subscriptionId === 0) {
-        console.log("⚠️  WARNING: CHAINLINK_SUBSCRIPTION_ID not set!");
-        console.log("   You need to:");
-        console.log("   1. Go to https://functions.chain.link/zksync-sepolia");
-        console.log("   2. Create a new subscription");
-        console.log("   3. Fund it with LINK");
-        console.log("   4. Set CHAINLINK_SUBSCRIPTION_ID in .env");
-        console.log("   5. Re-run this deployment or call setSubscriptionId() after deployment");
-        console.log("\n   Deploying with subscriptionId = 0 for now...\n");
+        console.error("❌  ERROR: CHAINLINK_SUBSCRIPTION_ID is not set or is 0.");
+        console.error("   PdMFunctionsConsumer requires a valid Chainlink Functions subscription.");
+        console.error("");
+        console.error("   Steps to fix:");
+        console.error("   1. Go to https://functions.chain.link/zksync-sepolia");
+        console.error("   2. Create a new subscription and fund it with LINK");
+        console.error("   3. Set CHAINLINK_SUBSCRIPTION_ID=<id> in your .env file");
+        console.error("   4. Re-run this deployment script");
+        console.error("");
+        if (!forceFlag) {
+            console.error("   Aborting. To deploy anyway (not recommended), pass --force.");
+            process.exit(1);
+        }
+        console.warn("   --force flag detected. Deploying with subscriptionId=0 (NOT for production).\n");
     } else {
         console.log(`Chainlink Subscription ID: ${subscriptionId}`);
     }

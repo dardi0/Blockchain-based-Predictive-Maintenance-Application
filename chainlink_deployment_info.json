@@ -1,18 +1,18 @@
 {
   "network": "ZKSYNC_ERA_SEPOLIA",
   "chainId": 300,
-  "timestamp": "2026-02-09T21:18:25.493Z",
+  "timestamp": "2026-02-25T14:22:56.092Z",
   "deployer": "0xD7c504d02A9265708b8400aFbde149c6677C5869",
   "chainlinkConfig": {
     "router": "0x20Fb9D1d12884A3FA5a5Af6258430A15A2aB3e69",
     "donId": "fun-zksync-sepolia-1",
     "donIdBytes32": "0x66756e2d7a6b73796e632d7365706f6c69612d31000000000000000000000000",
-    "subscriptionId": 6254,
+    "subscriptionId": 32769,
     "callbackGasLimit": 300000
   },
   "contracts": {
     "ChainlinkPdMAutomation": {
-      "address": "0x8347784a2aA45D3b51958793B932EC8B673E8c67",
+      "address": "0xCF5679d64fe8F9D82eE83a7288230ccF3e2a0CeF",
       "config": {
         "sensorInterval": 3600,
         "reportInterval": 86400,
@@ -20,24 +20,16 @@
       }
     },
     "PdMFunctionsConsumer": {
-      "address": "0x631B665884355898Ef094eCEd0d12B7abf62B39E",
+      "address": "0x214CDE88EA8cc10464478973053fA2786046b318",
       "config": {
         "router": "0x20Fb9D1d12884A3FA5a5Af6258430A15A2aB3e69",
         "donId": "fun-zksync-sepolia-1",
-        "subscriptionId": 6254
-      },
-      "note": "Replaced by BackendOracleConsumer"
-    },
-    "BackendOracleConsumer": {
-      "address": "0x1c5f5Cd6c3ceeFC951DF606A7993b08539d7c5b7",
-      "config": {
-        "trustedOracle": "0xD7c504d02A9265708b8400aFbde149c6677C5869"
+        "subscriptionId": 32769
       }
     }
   },
   "linkedContracts": {
-    "AccessControlRegistry": "0xD583F4854c6062E1e9529A1c8f55F6FFfca5f802",
-    "PdMSystemHybrid": "0x1ffDdACd5cD4be4f73eee81886e5E7c2661f734D"
-  },
-  "activeConsumer": "BackendOracleConsumer"
+    "AccessControlRegistry": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
+    "PdMSystemHybrid": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B"
+  }
 }

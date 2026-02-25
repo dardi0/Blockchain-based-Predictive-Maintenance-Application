@@ -50,9 +50,36 @@ def get_automation_refs():
 # --- API Key Verification ---
 CHAINLINK_AUTOMATION_API_KEY = os.getenv("CHAINLINK_AUTOMATION_API_KEY", "")
 
+if not CHAINLINK_AUTOMATION_API_KEY:
+    logger.critical(
+        "SECURITY WARNING: CHAINLINK_AUTOMATION_API_KEY is not set. "
+        "All automation write endpoints (generate-proof, create-maintenance-task) "
+        "are publicly accessible without authentication! "
+        "Set CHAINLINK_AUTOMATION_API_KEY in your .env file immediately."
+    )
+
 
 def verify_automation_key(x_automation_key: str = Header(None)):
-    """Verify Chainlink automation API key"""
+    """Verify Chainlink automation API key.
+
+    If the API key env var is not configured, write endpoints are BLOCKED to prevent
+    unauthenticated access. Read-only endpoints (sensor-batch, status) remain accessible.
+    """
+    if not CHAINLINK_AUTOMATION_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Automation API key not configured on server. "
+                "Set CHAINLINK_AUTOMATION_API_KEY in the environment."
+            )
+        )
+    if x_automation_key != CHAINLINK_AUTOMATION_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid automation API key")
+    return True
+
+
+def verify_automation_key_optional(x_automation_key: str = Header(None)):
+    """Verify key for read-only endpoints — allows access when key is unconfigured."""
     if not CHAINLINK_AUTOMATION_API_KEY:
         return True
     if x_automation_key != CHAINLINK_AUTOMATION_API_KEY:
@@ -62,7 +89,7 @@ def verify_automation_key(x_automation_key: str = Header(None)):
 
 # --- Endpoints ---
 @router.get("/sensor-batch")
-def get_sensor_batch_for_automation(limit: int = 10, _: bool = Depends(verify_automation_key)):
+def get_sensor_batch_for_automation(limit: int = 10, _: bool = Depends(verify_automation_key_optional)):
     """Returns latest sensor data batch for Chainlink Functions DON."""
     db = get_db_manager()
 
@@ -270,7 +297,7 @@ def create_maintenance_task_automated(
 
 
 @router.get("/status")
-def get_automation_status(_: bool = Depends(verify_automation_key)):
+def get_automation_status(_: bool = Depends(verify_automation_key_optional)):
     """Returns current automation status and statistics."""
     db = get_db_manager()
 

@@ -42,6 +42,17 @@ if (!data.sensors || data.sensors.length === 0) {
 
 const sensor = data.sensors[0];
 
+// Validate required sensor fields to avoid NaN propagation
+const requiredFields = ["machine_id", "air_temp", "process_temp", "rotation_speed", "torque", "tool_wear"];
+for (const field of requiredFields) {
+    if (sensor[field] === undefined || sensor[field] === null) {
+        throw Error(`Sensor data missing required field: ${field}`);
+    }
+    if (typeof sensor[field] !== "number" || isNaN(sensor[field])) {
+        throw Error(`Sensor field ${field} is not a valid number: ${sensor[field]}`);
+    }
+}
+
 // Feature normalization parameters (from training)
 const NORMALIZATION = {
     air_temp: { min: 295.0, max: 305.0 },
@@ -113,19 +124,26 @@ if (tempDiff > 10 && sensor.rotation_speed < 1400) {
 const prediction = hasDefiniteFailure ? 1 : (sigmoid > THRESHOLD ? 1 : 0);
 const confidence = hasDefiniteFailure ? 9500 : Math.floor(sigmoid * 10000); // 0-10000 scale
 
-// Calculate data hash (keccak256 equivalent using simple hash)
-function simpleHash(data) {
-    let hash = 0;
-    const str = JSON.stringify(data);
+// Calculate data fingerprint using FNV-1a 53-bit variant.
+// Note: this is NOT a cryptographic hash and does NOT match the Python-side keccak256.
+// The dataHash field is used only as a data integrity fingerprint within the DON response;
+// the backend independently verifies data integrity via keccak256 before on-chain submission.
+function fnv1a53(data) {
+    const str = JSON.stringify(data, Object.keys(data).sort()); // sorted keys for determinism
+    let h1 = 0xdeadbeef;
+    let h2 = 0x41c6ce57;
     for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
+        const code = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ code, 2654435761);
+        h2 = Math.imul(h2 ^ code, 1597334677);
     }
-    return hash >>> 0; // Ensure unsigned
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    // Combine into a 53-bit positive integer (safe for BigInt conversion)
+    return (4294967296 * (h2 >>> 0) + (h1 >>> 0)) >>> 0;
 }
 
-const dataHash = simpleHash({
+const dataHash = fnv1a53({
     machine_id: sensor.machine_id,
     air_temp: sensor.air_temp,
     process_temp: sensor.process_temp,

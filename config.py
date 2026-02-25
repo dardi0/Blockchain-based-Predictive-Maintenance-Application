@@ -296,13 +296,44 @@ class DatabaseConfig:
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # --- CHAINLINK KONFİGÜRASYONU ---
+def _load_chainlink_automation_address() -> str:
+    """Load AUTOMATION_ADDRESS from env var, then chainlink_deployment_info.json, then fail loudly."""
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    # 1. Prefer explicit env var (no hardcoded default)
+    env_val = os.getenv("CHAINLINK_AUTOMATION_ADDRESS", "").strip()
+    if env_val:
+        return env_val
+
+    # 2. Fall back to deployment info file
+    info_path = Path("chainlink_deployment_info.json")
+    if info_path.exists():
+        try:
+            import json as _json
+            info = _json.loads(info_path.read_text())
+            addr = (
+                info.get("contracts", {}).get("ChainlinkPdMAutomation")
+                or info.get("automation_address")
+            )
+            if addr:
+                _log.info(f"ChainlinkConfig: AUTOMATION_ADDRESS loaded from {info_path}: {addr}")
+                return addr
+        except Exception as e:
+            _log.warning(f"ChainlinkConfig: could not parse {info_path}: {e}")
+
+    # 3. Not found — return empty string and warn
+    _log.warning(
+        "ChainlinkConfig: AUTOMATION_ADDRESS not configured. "
+        "Set CHAINLINK_AUTOMATION_ADDRESS in .env or deploy chainlink contracts first."
+    )
+    return ""
+
+
 class ChainlinkConfig:
     """Chainlink Automation konfigurasyonu"""
     BACKEND_ORACLE_ADDRESS = os.getenv("BACKEND_ORACLE_ADDRESS")
-    AUTOMATION_ADDRESS = os.getenv(
-        "CHAINLINK_AUTOMATION_ADDRESS",
-        "0x8347784a2aA45D3b51958793B932EC8B673E8c67"
-    )
+    AUTOMATION_ADDRESS = _load_chainlink_automation_address()
     ORACLE_PRIVATE_KEY = (
         os.getenv("CHAINLINK_AUTOMATION_PRIVATE_KEY")
         or os.getenv("CONTRACT_OWNER_PRIVATE_KEY")

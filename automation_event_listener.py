@@ -662,7 +662,11 @@ class AutomationEventListener:
             logger.error(f"Error getting prediction details: {e}")
 
     def _generate_and_submit_zk_proof(self, machine_id: int, prediction_id: int, pred_data: tuple):
-        """Generate ZK proof for a failure prediction and submit on-chain."""
+        """Generate ZK proof for a failure prediction and submit on-chain.
+
+        Retries up to 3 times with exponential backoff (5s, 10s, 20s).
+        On final failure, logs a dead-letter entry for manual recovery.
+        """
         if not self._init_blockchain_handler():
             logger.error("Cannot generate ZK proof - blockchain handler unavailable")
             return
@@ -673,52 +677,80 @@ class AutomationEventListener:
             logger.warning(f"No sensor data found for machine {machine_id}")
             return
 
+        # Run prediction once (outside retry loop — same data reused across attempts)
         try:
-            # Run prediction to get current result
             result = self.run_prediction(sensor_data)
-
-            logger.info(f"Submitting prediction proof for machine {machine_id}...")
-            proof_result = self.blockchain_handler.submit_prediction_proof_automated({
-                'machine_id': machine_id,
-                'prediction': result['prediction'],
-                'probability': result['probability'],
-                'confidence': result['confidence'],
-                'air_temp': sensor_data.get('air_temp'),
-                'process_temp': sensor_data.get('process_temp'),
-                'rotation_speed': sensor_data.get('rotation_speed'),
-                'torque': sensor_data.get('torque'),
-                'tool_wear': sensor_data.get('tool_wear'),
-                'timestamp': sensor_data.get('timestamp', int(time.time())),
-            })
-
-            if isinstance(proof_result, dict) and proof_result.get('success'):
-                tx_hash = proof_result.get('tx_hash', '')
-                logger.info(
-                    f"ZK proof submitted! TX: {tx_hash}",
-                    extra={"event_type": "zk_proof_success",
-                           "tx_hash": tx_hash,
-                           "circuit_type": "MAINTENANCE"},
-                )
-
-                # Update database
-                if self.db_manager and sensor_data.get('id'):
-                    self.db_manager.update_blockchain_info(
-                        record_id=sensor_data['id'],
-                        success=True,
-                        tx_hash=tx_hash,
-                        proof_id=proof_result.get('blockchain_proof_id'),
-                        is_prediction=True
-                    )
-            else:
-                error = proof_result.get('error', 'Unknown') if isinstance(proof_result, dict) else str(proof_result)
-                logger.error(
-                    f"ZK proof submission failed: {error}",
-                    extra={"event_type": "zk_proof_failed",
-                           "circuit_type": "MAINTENANCE"},
-                )
-
         except Exception as e:
-            logger.error(f"ZK proof generation/submission error: {e}")
+            logger.error(f"Prediction run failed before ZK proof for machine {machine_id}: {e}")
+            return
+
+        proof_payload = {
+            'machine_id': machine_id,
+            'prediction': result['prediction'],
+            'probability': result['probability'],
+            'confidence': result['confidence'],
+            'air_temp': sensor_data.get('air_temp'),
+            'process_temp': sensor_data.get('process_temp'),
+            'rotation_speed': sensor_data.get('rotation_speed'),
+            'torque': sensor_data.get('torque'),
+            'tool_wear': sensor_data.get('tool_wear'),
+            'timestamp': sensor_data.get('timestamp', int(time.time())),
+        }
+
+        max_attempts = 3
+        backoff_seconds = [5, 10, 20]
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logger.info(f"Submitting ZK proof for machine {machine_id} (attempt {attempt}/{max_attempts})...")
+                proof_result = self.blockchain_handler.submit_prediction_proof_automated(proof_payload)
+
+                if isinstance(proof_result, dict) and proof_result.get('success'):
+                    tx_hash = proof_result.get('tx_hash', '')
+                    logger.info(
+                        f"ZK proof submitted! TX: {tx_hash}",
+                        extra={"event_type": "zk_proof_success",
+                               "tx_hash": tx_hash,
+                               "circuit_type": "MAINTENANCE",
+                               "attempt": attempt},
+                    )
+                    # Update database
+                    if self.db_manager and sensor_data.get('id'):
+                        self.db_manager.update_blockchain_info(
+                            record_id=sensor_data['id'],
+                            success=True,
+                            tx_hash=tx_hash,
+                            proof_id=proof_result.get('blockchain_proof_id'),
+                            is_prediction=True
+                        )
+                    return  # Success — exit retry loop
+
+                error = proof_result.get('error', 'Unknown') if isinstance(proof_result, dict) else str(proof_result)
+                logger.warning(
+                    f"ZK proof submission attempt {attempt} failed: {error}",
+                    extra={"event_type": "zk_proof_retry",
+                           "attempt": attempt,
+                           "circuit_type": "MAINTENANCE"},
+                )
+
+            except Exception as e:
+                logger.warning(f"ZK proof attempt {attempt} raised exception: {e}")
+
+            # Wait before next attempt (skip sleep after last attempt)
+            if attempt < max_attempts:
+                time.sleep(backoff_seconds[attempt - 1])
+
+        # All attempts exhausted — log dead-letter entry
+        logger.error(
+            f"ZK proof submission PERMANENTLY FAILED after {max_attempts} attempts "
+            f"for machine_id={machine_id}, prediction_id={prediction_id}. "
+            f"Manual recovery required: re-run proof submission for sensor record id={sensor_data.get('id')}.",
+            extra={"event_type": "zk_proof_dead_letter",
+                   "machine_id": machine_id,
+                   "prediction_id": prediction_id,
+                   "sensor_record_id": sensor_data.get('id'),
+                   "circuit_type": "MAINTENANCE"},
+        )
 
     def poll_events(self):
         """Poll for new PredictionRequested and MaintenanceTaskRequested events."""

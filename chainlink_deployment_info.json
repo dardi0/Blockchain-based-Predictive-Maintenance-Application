@@ -30,6 +30,12 @@
   },
   "linkedContracts": {
     "AccessControlRegistry": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
-    "PdMSystemHybrid": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B"
+    "PdMSystemHybrid": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B",
+    "BackendOracleConsumer": "0x1c5f5Cd6c3ceeFC951DF606A7993b08539d7c5b7"
+  },
+  "activeConsumer": "BackendOracleConsumer",
+  "notes": {
+    "chainlinkFunctions": "zkSync Sepolia does not support Chainlink Functions DON. PdMFunctionsConsumer is inactive.",
+    "automationFlow": "ChainlinkPdMAutomation.functionsConsumer = BackendOracleConsumer. performUpkeep() calls BackendOracleConsumer.requestPrediction() which emits PredictionRequested for the backend listener."
   }
 }

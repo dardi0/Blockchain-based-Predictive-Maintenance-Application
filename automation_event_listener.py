@@ -363,12 +363,21 @@ class AutomationEventListener:
         try:
             import numpy as np
 
+            # One-hot encode machine type (Type_H, Type_L, Type_M)
+            machine_type = str(sensor_data.get('machine_type', 'L')).upper()
+            type_h = 1 if machine_type == 'H' else 0
+            type_l = 1 if machine_type == 'L' else 0
+            type_m = 1 if machine_type == 'M' else 0
+
             features = np.array([[
                 sensor_data.get('air_temp', 0),
                 sensor_data.get('process_temp', 0),
                 sensor_data.get('rotation_speed', 0),
                 sensor_data.get('torque', 0),
-                sensor_data.get('tool_wear', 0)
+                sensor_data.get('tool_wear', 0),
+                type_h,
+                type_l,
+                type_m,
             ]])
 
             # Use ML model if available

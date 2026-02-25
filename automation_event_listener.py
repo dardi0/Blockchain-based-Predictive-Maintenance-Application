@@ -362,6 +362,8 @@ class AutomationEventListener:
         """Run ML prediction on sensor data."""
         try:
             import numpy as np
+            import warnings
+            warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
             # One-hot encode machine type (Type_H, Type_L, Type_M)
             machine_type = str(sensor_data.get('machine_type', 'L')).upper()
@@ -579,14 +581,13 @@ class AutomationEventListener:
         timestamp = event['args']['timestamp']
         requester = event['args']['requester']
 
-        logger.info(f"Processing prediction request: {request_id.hex()[:16]}...")
-        logger.info(f"  Timestamp: {datetime.fromtimestamp(timestamp)}")
-        logger.info(f"  Requester: {requester}")
-
-        # Check if already fulfilled
+        # Check if already fulfilled (before logging to reduce startup noise)
         if self.is_request_fulfilled(request_id):
-            logger.info("  Request already fulfilled, skipping...")
+            logger.debug(f"Request {request_id.hex()[:16]}... already fulfilled, skipping")
             return
+
+        logger.info(f"Processing prediction request: {request_id.hex()[:16]}...")
+        logger.info(f"  Timestamp: {datetime.fromtimestamp(timestamp)} | Requester: {requester[:20]}...")
 
         # Get sensor data
         sensor_data = self.get_sensor_data()

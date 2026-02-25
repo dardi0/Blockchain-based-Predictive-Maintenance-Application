@@ -14,24 +14,33 @@
     "ChainlinkPdMAutomation": {
       "address": "0xCF5679d64fe8F9D82eE83a7288230ccF3e2a0CeF",
       "config": {
-        "sensorInterval": 3600,
+        "sensorInterval": 180,
         "reportInterval": 86400,
         "failureThreshold": 7000
       }
     },
     "PdMFunctionsConsumer": {
       "address": "0x214CDE88EA8cc10464478973053fA2786046b318",
+      "note": "Inactive - zkSync Sepolia does not support Chainlink Functions DON",
       "config": {
         "router": "0x20Fb9D1d12884A3FA5a5Af6258430A15A2aB3e69",
         "donId": "fun-zksync-sepolia-1",
         "subscriptionId": 32769
       }
+    },
+    "BackendOracleConsumer": {
+      "address": "0x1c5f5Cd6c3ceeFC951DF606A7993b08539d7c5b7",
+      "config": {
+        "trustedOracle": "0xD7c504d02A9265708b8400aFbde149c6677C5869",
+        "automationContract": "0xCF5679d64fe8F9D82eE83a7288230ccF3e2a0CeF"
+      }
+    },
+    "AccessControlRegistry": {
+      "address": "0x54414105CAc169bBEA3Cf21557844B030B79295a"
     }
   },
   "linkedContracts": {
-    "AccessControlRegistry": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
-    "PdMSystemHybrid": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B",
-    "BackendOracleConsumer": "0x1c5f5Cd6c3ceeFC951DF606A7993b08539d7c5b7"
+    "PdMSystemHybrid": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B"
   },
   "activeConsumer": "BackendOracleConsumer",
   "notes": {

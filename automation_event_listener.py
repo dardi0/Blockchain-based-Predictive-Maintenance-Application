@@ -524,7 +524,7 @@ class AutomationEventListener:
                                "block_number": receipt['blockNumber'],
                                "gas_used": receipt['gasUsed']},
                     )
-                    return True
+                    return tx_hash.hex()
                 else:
                     logger.error(
                         "Transaction failed with status 0",
@@ -619,21 +619,30 @@ class AutomationEventListener:
             self._update_sensor_prediction(
                 sensor_data.get('id'),
                 result['prediction'],
-                result['probability']
+                result['probability'],
+                tx_hash=success  # fulfill_prediction returns tx_hash string on success
             )
 
-    def _update_sensor_prediction(self, sensor_id: int, prediction: int, probability: float):
-        """Update sensor record with prediction result."""
+    def _update_sensor_prediction(self, sensor_id: int, prediction: int, probability: float, tx_hash: str = None):
+        """Update sensor record with prediction result and blockchain tx hash."""
         if not sensor_id or not self.db_manager:
             return
         try:
-            self.db_manager.update_blockchain_info(
+            # Save prediction value and probability
+            self.db_manager.update_sensor_prediction(
                 record_id=sensor_id,
-                success=True,
-                tx_hash=None,
-                proof_id=None
+                prediction=prediction,
+                probability=probability,
             )
-            logger.info(f"Updated sensor record {sensor_id} with prediction")
+            # Save blockchain tx hash
+            if tx_hash:
+                self.db_manager.update_blockchain_info(
+                    record_id=sensor_id,
+                    success=True,
+                    tx_hash=tx_hash,
+                    proof_id=None
+                )
+            logger.info(f"Updated sensor record {sensor_id} with prediction={prediction}, prob={probability:.4f}, tx={str(tx_hash)[:16] if tx_hash else 'N/A'}")
         except Exception as e:
             logger.error(f"Database update error: {e}")
 

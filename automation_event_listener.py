@@ -383,8 +383,8 @@ class AutomationEventListener:
             # Use ML model if available
             if self.ml_model and self.scaler:
                 scaled_features = self.scaler.transform(features)
-                # Reshape for LSTM [samples, timesteps, features]
-                reshaped = scaled_features.reshape((1, 1, -1))
+                # Reshape for Conv1D: (samples, timesteps, channels) = (1, n_features, 1)
+                reshaped = scaled_features.reshape((1, scaled_features.shape[1], 1))
                 prob = float(self.ml_model.predict(reshaped, verbose=0)[0][0])
                 prediction = 1 if prob > 0.5 else 0
             else:

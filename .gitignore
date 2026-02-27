@@ -181,3 +181,27 @@ deployment_data_*.json
 
 # ================== HARDHAT IGNITION LOCAL ==================
 ignition/deployments/chain-1337/
+
+# ================== PROJECT SPECIFIC EXCLUSIONS ==================
+# Datasets and results
+"NASA Turbofan/"
+"Performans_Metrikleri/"
+
+# Agent/IDE Metadata
+.codex/
+.opencode/
+.claude/
+.agents/
+.agent/
+_agents/
+_agent/
+brain/
+
+# Distribution/Backup
+.venv_backup/
+tracked_files.txt
+zksync_api_result.txt
+failure.txt
+automation_listener.log
+automation_listener.log.*
+*.bin

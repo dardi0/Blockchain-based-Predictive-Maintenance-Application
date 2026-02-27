@@ -14,6 +14,10 @@ interface MeasurementListProps {
     currentType: string | null;
     onClearFilter: () => void;
     onViewMachine: (machineId: number) => void;
+    /** Toplam kayıt sayısı (en yüksek numara) */
+    totalCount: number;
+    /** Bu sayfadaki ilk satırın global offset'i (0-bazlı) */
+    globalStartIndex: number;
 }
 
 export const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -21,7 +25,9 @@ export const MeasurementList: React.FC<MeasurementListProps> = ({
     onMeasurementClick,
     currentType,
     onClearFilter,
-    onViewMachine
+    onViewMachine,
+    totalCount,
+    globalStartIndex,
 }) => {
     if (measurements.length === 0) {
         return (
@@ -49,12 +55,19 @@ export const MeasurementList: React.FC<MeasurementListProps> = ({
 
             {measurements.map((measurement, index) => (
                 <div
-                    key={`${measurement.machine.id}-${measurement.timestamp}-${index}`}
+                    key={`${(measurement as any).id ?? measurement.machine.id}-${measurement.timestamp}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onMeasurementClick(measurement)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onMeasurementClick(measurement); }}
                     className="group relative p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.14] transition-all duration-300 cursor-pointer"
                 >
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
+                            {/* Sequential number badge — newest = totalCount */}
+                            <div className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-bold text-white/50">{totalCount - globalStartIndex - index}</span>
+                            </div>
                             <div className={`
                                 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
                                 ${measurement.machine.status === MachineStatus.CRITICAL ? 'bg-red-500/15 text-red-400' :
@@ -114,7 +127,7 @@ export const MeasurementList: React.FC<MeasurementListProps> = ({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onViewMachine(measurement.machine.id);
+                                onViewMachine(Number(measurement.machine.id));
                             }}
                             className="p-2 text-[var(--accent-highlight)] hover:bg-[var(--accent-primary)]/10 rounded-lg transition-colors"
                             title="View Machine Health Details"

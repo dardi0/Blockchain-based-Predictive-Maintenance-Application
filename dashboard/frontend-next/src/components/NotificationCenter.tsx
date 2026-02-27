@@ -19,33 +19,86 @@ interface NotificationCenterProps {
     walletAddress: string;
 }
 
+interface NotificationState {
+    isOpen: boolean;
+    notifications: Notification[];
+    unreadCount: number;
+    loading: boolean;
+}
+
+type NotificationAction =
+    | { type: 'SET_OPEN'; payload: boolean }
+    | { type: 'SET_LOADING'; payload: boolean }
+    | { type: 'SET_NOTIFICATIONS'; payload: { list: Notification[]; unread: number } }
+    | { type: 'MARK_READ'; payload: number }
+    | { type: 'DELETE_NOTIFICATION'; payload: number }
+    | { type: 'REMOTE_OPEN_START' }
+    | { type: 'REMOTE_OPEN_FINISH' };
+
+const initialState: NotificationState = {
+    isOpen: false,
+    notifications: [],
+    unreadCount: 0,
+    loading: false,
+};
+
+function notificationReducer(state: NotificationState, action: NotificationAction): NotificationState {
+    switch (action.type) {
+        case 'SET_OPEN':
+            return { ...state, isOpen: action.payload };
+        case 'SET_LOADING':
+            return { ...state, loading: action.payload };
+        case 'SET_NOTIFICATIONS':
+            return { ...state, notifications: action.payload.list, unreadCount: action.payload.unread };
+        case 'MARK_READ': {
+            const updated = state.notifications.map(n => n.id === action.payload ? { ...n, is_read: true } : n);
+            return { ...state, notifications: updated, unreadCount: Math.max(0, state.unreadCount - 1) };
+        }
+        case 'DELETE_NOTIFICATION': {
+            const remaining = state.notifications.filter(n => n.id !== action.payload);
+            const newUnread = remaining.filter(n => !n.is_read).length;
+            return { ...state, notifications: remaining, unreadCount: newUnread };
+        }
+        case 'REMOTE_OPEN_START':
+            return { ...state, loading: true };
+        case 'REMOTE_OPEN_FINISH':
+            return { ...state, loading: false, isOpen: true };
+        default:
+            return state;
+    }
+}
+
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }) => {
     const router = useRouter();
-    // const { settings } = useSettings(); // Unused now
-    const [isOpen, setIsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [state, dispatch] = React.useReducer(notificationReducer, initialState);
+    const { isOpen, notifications, unreadCount, loading } = state;
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const autoCloseTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     // Fetch notifications
     const fetchNotifications = async () => {
         if (!walletAddress) return;
-        // Don't set loading on every poll to avoid UI flicker
         try {
             const data = await api.getNotifications(walletAddress, 50);
-            // API returns NotificationItem[] directly, map to local Notification type
-            const list = (Array.isArray(data) ? data : []).map((n: any) => ({
-                id: n.id,
-                type: n.type || 'info',
-                message: n.message,
-                created_at: n.created_at,
-                is_read: n.is_read ?? false,
-                network_tx_hash: n.network_tx_hash
-            }));
+            let rawList: any[] = [];
+            if (Array.isArray(data)) rawList = data;
+            const list = rawList.map((n: any) => {
+                let t = 'info';
+                if (n.type) t = n.type;
+                let readStat = false;
+                if (n.is_read !== undefined && n.is_read !== null) readStat = n.is_read;
+                return {
+                    id: n.id,
+                    type: t,
+                    message: n.message,
+                    created_at: n.created_at,
+                    is_read: readStat,
+                    network_tx_hash: n.network_tx_hash
+                };
+            });
 
-            setNotifications(list);
-            setUnreadCount(list.filter((n: any) => !n.is_read).length);
+            const unread = list.filter((n: any) => !n.is_read).length;
+            dispatch({ type: 'SET_NOTIFICATIONS', payload: { list, unread } });
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         }
@@ -53,7 +106,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
 
     useEffect(() => {
         fetchNotifications();
-        // Refresh every 10 seconds to sync with DashboardShell
         const interval = setInterval(fetchNotifications, 10000);
         return () => clearInterval(interval);
     }, [walletAddress]);
@@ -62,17 +114,15 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+                dispatch({ type: 'SET_OPEN', payload: false });
             }
         };
 
         const handleRemoteOpen = async () => {
-            setLoading(true);
-            await fetchNotifications(); // Wait for data before showing
-            setLoading(false);
-            setIsOpen(true);
-            // Auto close after 7 seconds if user doesn't interact (slightly longer to allow reading)
-            setTimeout(() => setIsOpen(false), 7000);
+            dispatch({ type: 'REMOTE_OPEN_START' });
+            await fetchNotifications();
+            dispatch({ type: 'REMOTE_OPEN_FINISH' });
+            autoCloseTimeoutRef.current = setTimeout(() => dispatch({ type: 'SET_OPEN', payload: false }), 7000);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -81,6 +131,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('open-notification-center', handleRemoteOpen);
+            clearTimeout(autoCloseTimeoutRef.current);
         };
     }, []);
 
@@ -131,8 +182,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
             try {
                 await api.markNotificationRead(notification.id);
                 // Optimistic update
-                setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
-                setUnreadCount(prev => Math.max(0, prev - 1));
+                dispatch({ type: 'MARK_READ', payload: notification.id });
             } catch (e) {
                 console.error("Failed to mark read", e);
             }
@@ -147,10 +197,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
         e.stopPropagation(); // Access parent click
         try {
             await api.deleteNotification(id);
-            setNotifications(prev => prev.filter(n => n.id !== id));
-            // Recalculate unread count just in case
-            const remaining = notifications.filter(n => n.id !== id);
-            setUnreadCount(remaining.filter(n => !n.is_read).length);
+            dispatch({ type: 'DELETE_NOTIFICATION', payload: id });
         } catch (error) {
             console.error("Failed to delete notification", error);
         }
@@ -161,7 +208,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
             {/* Bell Button */}
             {/* Bell Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => dispatch({ type: 'SET_OPEN', payload: !isOpen })}
                 className="relative p-3 rounded-xl bg-white dark:bg-[var(--dark-bg)] border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-[var(--accent-primary)]/50 dark:hover:border-[var(--accent-primary)]/50 transition-all group"
                 title="Notifications"
             >
@@ -188,7 +235,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
                             )}
                         </h3>
                         <button
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => dispatch({ type: 'SET_OPEN', payload: false })}
                             className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
                         >
                             <X size={18} className="text-slate-400" />
@@ -210,7 +257,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
                             notifications.map((notification) => (
                                 <div
                                     key={notification.id}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => handleNotificationClick(notification)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleNotificationClick(notification); }}
                                     className={`p-4 border-l-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/item relative ${getSeverityColor(notification.type, notification.is_read)}`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -256,7 +306,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ walletAddress }
                             <button
                                 onClick={() => {
                                     router.push('/dashboard/notifications');
-                                    setIsOpen(false);
+                                    dispatch({ type: 'SET_OPEN', payload: false });
                                 }}
                                 className="text-sm text-[var(--accent-primary)] dark:text-[var(--accent-highlight)] hover:underline font-medium"
                             >

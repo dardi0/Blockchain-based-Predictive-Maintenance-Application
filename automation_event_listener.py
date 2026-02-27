@@ -110,6 +110,15 @@ class AutomationEventListener:
         self.last_maintenance_block = 0
         self.running = False
 
+        # Multi-machine rotation state
+        self._machine_cycle_idx = 0
+        # Machine registry: id -> type
+        self._machines = [
+            {'id': 1001, 'type': 'L'},
+            {'id': 2001, 'type': 'M'},
+            {'id': 3001, 'type': 'H'},
+        ]
+
         # Load deployment info
         self.deployment_info = self._load_deployment_info()
 
@@ -575,13 +584,84 @@ class AutomationEventListener:
             logger.debug(f"Could not check request status: {e}")
             return False
 
+    # ------------------------------------------------------------------
+    # Sensor data generation
+    # ------------------------------------------------------------------
+    # ai4i2020 veri setinden çıkarılan istatistikler
+    _SENSOR_STATS = {
+        'air_temp':       {'min': 295.3, 'max': 304.5, 'mean': 300.0, 'std': 2.0},
+        'process_temp':   {'min': 305.7, 'max': 313.8, 'mean': 310.0, 'std': 1.5},
+        'rotation_speed': {'min': 1168,  'max': 2886,  'mean': 1539,  'std': 179},
+        'torque':         {'min': 3.8,   'max': 76.6,  'mean': 40.0,  'std': 10.0},
+        'tool_wear':      {'min': 0,     'max': 253,   'mean': 108,   'std': 64},
+    }
+    # Anomali olasiliğı (0-1) — her event'te bu olasılıkla anormal veri üretilir
+    ANOMALY_PROBABILITY = 0.35
+    # Anormal veri ne kadar uçta olsun (standart sapma katsayısı)
+    ANOMALY_STD_MULTIPLIER = 3.5
+
+    def _generate_sensor_values(self) -> Dict:
+        """Dataset istatistiklerinden rastgele sensör değerleri üret.
+
+        Normal mod (%65): min-max aralığı içinde truncated-normal dağılım.
+        Anomali modu (%35): ortalamadan ANOMALY_STD_MULTIPLIER * std kadar
+        uzakta değerler üretilir (arıza eğilimi simülasyonu).
+
+        Torque / rotation_speed / tool_wear fiziksel olarak negatif olamaz;
+        bu sensörler için anomali yönü daima yukardır (+yüksek değer).
+        """
+        import random
+
+        is_anomaly = random.random() < self.ANOMALY_PROBABILITY
+        result = {}
+
+        # Sadece sıcaklık sensörleri her iki yönde anomali üretebilir
+        BIDIRECTIONAL = {'air_temp', 'process_temp'}
+
+        for field, s in self._SENSOR_STATS.items():
+            mu, sigma = s['mean'], s['std']
+            low, high = s['min'], s['max']
+
+            if is_anomaly:
+                if field in BIDIRECTIONAL:
+                    direction = random.choice([-1, 1])
+                    boundary = high if direction == 1 else low
+                else:
+                    # Fiziksel sensörler: sadece yüksek yönde anomali
+                    direction = 1
+                    boundary = high
+
+                center = boundary + direction * random.uniform(
+                    0.5 * self.ANOMALY_STD_MULTIPLIER * sigma,
+                    1.5 * self.ANOMALY_STD_MULTIPLIER * sigma
+                )
+                value = random.gauss(center, sigma * 0.5)
+            else:
+                # Truncated normal: aralık içinde kal
+                for _ in range(20):
+                    value = random.gauss(mu, sigma)
+                    if low <= value <= high:
+                        break
+                else:
+                    value = random.uniform(low, high)
+
+            # Tip ve fiziksel alt sınır
+            if field in ('rotation_speed', 'tool_wear'):
+                result[field] = max(0, int(round(value)))
+            elif field == 'torque':
+                result[field] = max(0.0, round(value, 1))
+            else:
+                result[field] = round(value, 1)
+
+        return result, is_anomaly
+
     def process_prediction_request(self, event: Dict):
         """Process a PredictionRequested event."""
         request_id = event['args']['requestId']
-        timestamp = event['args']['timestamp']
-        requester = event['args']['requester']
+        timestamp  = event['args']['timestamp']
+        requester  = event['args']['requester']
 
-        # Check if already fulfilled (before logging to reduce startup noise)
+        # Already fulfilled?
         if self.is_request_fulfilled(request_id):
             logger.debug(f"Request {request_id.hex()[:16]}... already fulfilled, skipping")
             return
@@ -589,20 +669,50 @@ class AutomationEventListener:
         logger.info(f"Processing prediction request: {request_id.hex()[:16]}...")
         logger.info(f"  Timestamp: {datetime.fromtimestamp(timestamp)} | Requester: {requester[:20]}...")
 
-        # Get sensor data
-        sensor_data = self.get_sensor_data()
+        # --- Multi-machine rotation ---
+        machine_info = self._machines[self._machine_cycle_idx % len(self._machines)]
+        self._machine_cycle_idx += 1
+        machine_id   = machine_info['id']
+        machine_type = machine_info['type']
+        logger.info(f"  Machine ID: {machine_id} (Type: {machine_type})")
 
-        if not sensor_data:
-            logger.warning("No sensor data available for prediction")
-            return
+        # --- Sensor data generation ---
+        sensor_values, is_anomaly = self._generate_sensor_values()
+        if is_anomaly:
+            logger.info("  [!] Anomalous sensor values generated (stress test)")
 
-        machine_id = sensor_data.get('machine_id', 1)
-        logger.info(f"  Machine ID: {machine_id}")
+        if self.db_manager:
+            new_record = {
+                'machine_id':    machine_id,
+                'machine_type':  machine_type,
+                'timestamp':     int(time.time()),
+                'air_temp':      sensor_values['air_temp'],
+                'process_temp':  sensor_values['process_temp'],
+                'rotation_speed':sensor_values['rotation_speed'],
+                'torque':        sensor_values['torque'],
+                'tool_wear':     sensor_values['tool_wear'],
+                'recorded_by':   'automation',
+            }
+            new_id = self.db_manager.save_sensor_data(new_record)
+            if new_id and new_id > 0:
+                sensor_data = {**new_record, 'id': new_id}
+                logger.info(f"  New sensor record created: id={new_id}")
+                logger.info(
+                    f"  Values → rpm={sensor_values['rotation_speed']} "
+                    f"torque={sensor_values['torque']}Nm "
+                    f"wear={sensor_values['tool_wear']}min "
+                    f"air={sensor_values['air_temp']}K "
+                    f"proc={sensor_values['process_temp']}K"
+                )
+            else:
+                sensor_data = new_record  # fallback (no id)
+        else:
+            sensor_data = {**sensor_values, 'machine_id': machine_id, 'machine_type': machine_type}
 
         # Run prediction
         result = self.run_prediction(sensor_data)
         logger.info(f"  Prediction: {'FAILURE' if result['prediction'] == 1 else 'NORMAL'}")
-        logger.info(f"  Confidence: {result['confidence'] / 100}%")
+        logger.info(f"  Confidence: {result['confidence'] / 100:.2f}%")
 
         # Calculate data hash
         data_hash = self.calculate_data_hash(sensor_data)
@@ -621,7 +731,7 @@ class AutomationEventListener:
                 sensor_data.get('id'),
                 result['prediction'],
                 result['probability'],
-                tx_hash=success  # fulfill_prediction returns tx_hash string on success
+                tx_hash=success
             )
 
     def _update_sensor_prediction(self, sensor_id: int, prediction: int, probability: float, tx_hash: str = None):

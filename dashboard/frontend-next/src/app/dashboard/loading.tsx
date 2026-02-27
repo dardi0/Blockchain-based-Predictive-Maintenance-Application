@@ -12,8 +12,8 @@ export default function Loading() {
 
             {/* Stats Cards Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-32 bg-white/[0.03] border border-white/[0.07] rounded-xl"></div>
+                {['s0', 's1', 's2', 's3'].map((key) => (
+                    <div key={key} className="h-32 bg-white/[0.03] border border-white/[0.07] rounded-xl"></div>
                 ))}
             </div>
 
@@ -25,8 +25,8 @@ export default function Loading() {
 
             {/* List Items Skeleton */}
             <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-20 bg-white/[0.03] border border-white/[0.07] rounded-xl"></div>
+                {['l0', 'l1', 'l2'].map((key) => (
+                    <div key={key} className="h-20 bg-white/[0.03] border border-white/[0.07] rounded-xl"></div>
                 ))}
             </div>
         </div>

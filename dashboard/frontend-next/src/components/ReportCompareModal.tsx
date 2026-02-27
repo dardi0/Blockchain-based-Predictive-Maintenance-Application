@@ -1,11 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { X, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { SavedReport } from '../types';
-import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from 'recharts';
 
 interface ReportCompareModalProps {
     reportA: SavedReport;
@@ -58,11 +56,35 @@ function SummaryCard({ label, valueA, valueB, unit = '' }: { label: string; valu
     );
 }
 
+const LazyChart = dynamic(() =>
+    import('recharts').then(({ BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend }) => {
+        interface ChartProps { chartData: Array<{ name: string; A: number; B: number }> }
+        return function ComparisonBarChart({ chartData }: ChartProps) {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip
+                            contentStyle={{ backgroundColor: 'rgba(10,16,32,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px' }}
+                            itemStyle={{ color: '#fff', fontSize: 12 }}
+                        />
+                        <Legend formatter={(v) => <span className="text-xs text-white/50">Report {v}</span>} />
+                        <Bar dataKey="A" name="A" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="B" name="B" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            );
+        };
+    }),
+    { ssr: false, loading: () => <div className="h-56 animate-pulse bg-white/[0.02] rounded-xl" /> }
+);
+
 export function ReportCompareModal({ reportA, reportB, onClose }: ReportCompareModalProps) {
     const { summary: sumA, machines: machA } = getSummary(reportA);
     const { summary: sumB, machines: machB } = getSummary(reportB);
 
-    // Build bar chart comparison
     const chartData = [
         { name: 'Avg Health', A: sumA.avgHealth || 0, B: sumB.avgHealth || 0 },
         { name: 'Critical', A: sumA.critical || 0, B: sumB.critical || 0 },
@@ -150,20 +172,7 @@ export function ReportCompareModal({ reportA, reportB, onClose }: ReportCompareM
                             Side-by-Side Comparison
                         </h4>
                         <div className="h-56">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'rgba(10,16,32,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px' }}
-                                        itemStyle={{ color: '#fff', fontSize: 12 }}
-                                    />
-                                    <Legend formatter={(v) => <span className="text-xs text-white/50">Report {v}</span>} />
-                                    <Bar dataKey="A" name="A" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="B" name="B" fill="#10b981" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <LazyChart chartData={chartData} />
                         </div>
                     </div>
 
@@ -176,8 +185,8 @@ export function ReportCompareModal({ reportA, reportB, onClose }: ReportCompareM
                                         <p className="text-xs font-bold text-white/50 uppercase tracking-widest">Report {label} — Machines</p>
                                     </div>
                                     <div className="divide-y divide-white/[0.04] max-h-44 overflow-y-auto">
-                                        {machines.slice(0, 10).map((m: any, i: number) => (
-                                            <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                                        {machines.slice(0, 10).map((m: any) => (
+                                            <div key={m.id ?? m.name} className="flex items-center justify-between px-4 py-2.5">
                                                 <div>
                                                     <p className="text-xs font-medium text-white">{m.name || `M#${m.id}`}</p>
                                                     <p className="text-xs text-white/30">Type: {m.type}</p>

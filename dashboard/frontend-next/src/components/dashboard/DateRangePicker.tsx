@@ -52,9 +52,9 @@ const PRESETS = [
 ];
 
 export function DateRangePicker({ onChange, startDate, endDate }: DateRangePickerProps) {
+    const [start, setStart] = useState(() => startDate || toInputDate(new Date(Date.now() - 7 * 86400000)));
+    const [end, setEnd] = useState(() => endDate || toInputDate(new Date()));
     const today = toInputDate(new Date());
-    const [start, setStart] = useState(startDate || toInputDate(new Date(Date.now() - 7 * 86400000)));
-    const [end, setEnd] = useState(endDate || today);
     const [activePreset, setActivePreset] = useState<string | null>('Last 7 Days');
 
     const handlePreset = (preset: typeof PRESETS[0]) => {
@@ -103,6 +103,7 @@ export function DateRangePicker({ onChange, startDate, endDate }: DateRangePicke
                     type="date"
                     value={start}
                     max={end || today}
+                    aria-label="Start date"
                     onChange={(e) => handleManualChange(e.target.value, end)}
                     className="px-2 py-1.5 bg-white/[0.03] border border-white/[0.07] rounded-lg text-xs text-white/70 focus:outline-none focus:border-[var(--accent-primary)]/50"
                 />
@@ -112,6 +113,7 @@ export function DateRangePicker({ onChange, startDate, endDate }: DateRangePicke
                     value={end}
                     min={start}
                     max={today}
+                    aria-label="End date"
                     onChange={(e) => handleManualChange(start, e.target.value)}
                     className="px-2 py-1.5 bg-white/[0.03] border border-white/[0.07] rounded-lg text-xs text-white/70 focus:outline-none focus:border-[var(--accent-primary)]/50"
                 />

@@ -11,34 +11,40 @@ import {
 
 type SettingsTab = 'profile' | 'notifications' | 'display' | 'blockchain' | 'machines' | 'privacy';
 
-export default function SettingsPage() {
-    const { settings, updateProfileSettings, updateNotificationSettings, updateDisplaySettings,
-        updateBlockchainSettings, updateMachinePreferences, updateDataPrivacySettings, resetSettings } = useSettings();
+// ── Reusable Toggle ─────────────────────────────────────────────────
+const ToggleSwitch: React.FC<{ checked: boolean; onChange: (val: boolean) => void }> = ({ checked, onChange }) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`
+            relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent
+            transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 focus:ring-offset-[#060b14]
+            ${checked ? 'bg-[var(--accent-primary)]' : 'bg-white/[0.15]'}
+        `}
+    >
+        <span className={`
+            pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0
+            transition duration-200 ease-in-out
+            ${checked ? 'translate-x-5' : 'translate-x-0'}
+        `} />
+    </button>
+);
+
+// ── Panel: Profile ──────────────────────────────────────────────────
+function ProfilePanel() {
+    const { settings, updateProfileSettings } = useSettings();
     const { user } = useDashboard();
-    const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
-    const [saveMessage, setSaveMessage] = useState('');
-
-    const showSaveMessage = () => {
-        setSaveMessage('Settings saved successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
-    };
-
-    const tabs = [
-        { id: 'profile' as SettingsTab, label: 'Profile', icon: User },
-        { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
-        { id: 'display' as SettingsTab, label: 'Display', icon: Monitor },
-        { id: 'blockchain' as SettingsTab, label: 'Blockchain', icon: Wallet },
-        { id: 'machines' as SettingsTab, label: 'Machines', icon: Cpu },
-        { id: 'privacy' as SettingsTab, label: 'Data & Privacy', icon: Shield },
-    ];
-
-    const renderProfileSettings = () => (
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Profile Settings</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Display Name</label>
+                    <label htmlFor="input-display-name" className="block text-sm font-medium text-white/60 mb-2">Display Name</label>
                     <input
+                        id="input-display-name"
+                        aria-label="Display Name"
                         type="text"
                         value={settings.profile.displayName}
                         onChange={(e) => updateProfileSettings({ displayName: e.target.value })}
@@ -47,8 +53,10 @@ export default function SettingsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Email Address</label>
+                    <label htmlFor="input-email-address" className="block text-sm font-medium text-white/60 mb-2">Email Address</label>
                     <input
+                        id="input-email-address"
+                        aria-label="Email Address"
                         type="email"
                         value={settings.profile.email}
                         onChange={(e) => updateProfileSettings({ email: e.target.value })}
@@ -57,10 +65,12 @@ export default function SettingsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
+                    <label htmlFor="select-language" className="block text-sm font-medium text-white/60 mb-2">
                         <Globe className="inline w-4 h-4 mr-1" /> Language
                     </label>
                     <select
+                        id="select-language"
+                        aria-label="Language"
                         value={settings.profile.language}
                         onChange={(e) => updateProfileSettings({ language: e.target.value as 'en' | 'tr' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -70,7 +80,7 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Connected Wallet</label>
+                    <span className="block text-sm font-medium text-white/60 mb-2">Connected Wallet</span>
                     <div className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.07] text-white/40 font-mono text-sm">
                         {user?.address || 'Not connected'}
                     </div>
@@ -78,8 +88,12 @@ export default function SettingsPage() {
             </div>
         </div>
     );
+}
 
-    const renderNotificationSettings = () => (
+// ── Panel: Notifications ────────────────────────────────────────────
+function NotificationPanel() {
+    const { settings, updateNotificationSettings } = useSettings();
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Notification Settings</h3>
             <div className="space-y-4">
@@ -107,8 +121,10 @@ export default function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Tool Wear Alert Threshold (minutes)</label>
+                    <label htmlFor="input-tool-wear" className="block text-sm font-medium text-white/60 mb-2">Tool Wear Alert Threshold (minutes)</label>
                     <input
+                        id="input-tool-wear"
+                        aria-label="Tool Wear Alert Threshold (minutes)"
                         type="number"
                         value={settings.notifications.toolWearThreshold}
                         onChange={(e) => updateNotificationSettings({ toolWearThreshold: parseInt(e.target.value) || 200 })}
@@ -117,8 +133,10 @@ export default function SettingsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Failure Probability Threshold (%)</label>
+                    <label htmlFor="input-prob-threshold" className="block text-sm font-medium text-white/60 mb-2">Failure Probability Threshold (%)</label>
                     <input
+                        id="input-prob-threshold"
+                        aria-label="Failure Probability Threshold (%)"
                         type="number"
                         value={settings.notifications.failureProbabilityThreshold}
                         onChange={(e) => updateNotificationSettings({ failureProbabilityThreshold: parseInt(e.target.value) || 70 })}
@@ -129,12 +147,16 @@ export default function SettingsPage() {
             </div>
         </div>
     );
+}
 
-    const renderDisplaySettings = () => (
+// ── Panel: Display ──────────────────────────────────────────────────
+function DisplayPanel() {
+    const { settings, updateDisplaySettings } = useSettings();
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Display Settings</h3>
             <div>
-                <label className="block text-sm font-medium text-white/60 mb-3">Color Theme</label>
+                <span className="block text-sm font-medium text-white/60 mb-3">Color Theme</span>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {THEMES.map((theme) => {
                         const isSelected = settings.display.colorTheme === theme.id;
@@ -149,10 +171,10 @@ export default function SettingsPage() {
                                 style={isSelected ? { borderColor: theme.accentPrimary, ['--tw-ring-color' as string]: theme.accentPrimary } : {}}
                             >
                                 <div className="flex gap-1 mb-2">
-                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.accentPrimary }} title="Primary" />
-                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.accentHighlight }} title="Highlight" />
-                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.darkBg }} title="Dark BG" />
-                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.lightBg }} title="Light BG" />
+                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.accentPrimary }} />
+                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.accentHighlight }} />
+                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.darkBg }} />
+                                    <div className="w-6 h-6 rounded-full border border-white/30 shadow-sm" style={{ backgroundColor: theme.lightBg }} />
                                 </div>
                                 <p className="text-xs font-bold text-white truncate">{theme.name}</p>
                                 <p className="text-[10px] text-white/40 truncate">{theme.description}</p>
@@ -166,12 +188,10 @@ export default function SettingsPage() {
                     })}
                 </div>
             </div>
-
             <hr className="border-white/[0.07]" />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Light / Dark Mode</label>
+                    <span className="block text-sm font-medium text-white/60 mb-2">Light / Dark Mode</span>
                     <div className="flex gap-2">
                         {[
                             { value: 'light', icon: Sun, label: 'Light' },
@@ -181,28 +201,28 @@ export default function SettingsPage() {
                             <button
                                 key={theme.value}
                                 onClick={() => updateDisplaySettings({ theme: theme.value as 'light' | 'dark' | 'system' })}
-                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border ${
-                                    settings.display.theme === theme.value
-                                        ? 'border-[var(--accent-primary)] text-[var(--accent-highlight)]'
-                                        : 'border-white/[0.07] text-white/40'
-                                }`}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border ${settings.display.theme === theme.value
+                                    ? 'border-[var(--accent-primary)] text-[var(--accent-highlight)]'
+                                    : 'border-white/[0.07] text-white/40'
+                                    }`}
                                 style={settings.display.theme === theme.value ? {
                                     borderColor: 'var(--accent-primary)',
                                     color: 'var(--accent-highlight)',
                                     backgroundColor: 'color-mix(in srgb, var(--accent-highlight) 10%, transparent)'
                                 } : {}}
                             >
-                                <theme.icon className="w-4 h-4" />
-                                {theme.label}
+                                <theme.icon className="w-4 h-4" /> {theme.label}
                             </button>
                         ))}
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
+                    <label htmlFor="select-refresh-interval" className="block text-sm font-medium text-white/60 mb-2">
                         <Clock className="inline w-4 h-4 mr-1" /> Dashboard Refresh Interval
                     </label>
                     <select
+                        id="select-refresh-interval"
+                        aria-label="Dashboard Refresh Interval"
                         value={settings.display.refreshInterval}
                         onChange={(e) => updateDisplaySettings({ refreshInterval: parseInt(e.target.value) as 5 | 10 | 30 | 60 })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -214,8 +234,10 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Date Format</label>
+                    <label htmlFor="select-date-format" className="block text-sm font-medium text-white/60 mb-2">Date Format</label>
                     <select
+                        id="select-date-format"
+                        aria-label="Date Format"
                         value={settings.display.dateFormat}
                         onChange={(e) => updateDisplaySettings({ dateFormat: e.target.value as 'DD.MM.YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -226,8 +248,10 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Temperature Unit</label>
+                    <label htmlFor="select-temperature-unit" className="block text-sm font-medium text-white/60 mb-2">Temperature Unit</label>
                     <select
+                        id="select-temperature-unit"
+                        aria-label="Temperature Unit"
                         value={settings.display.temperatureUnit}
                         onChange={(e) => updateDisplaySettings({ temperatureUnit: e.target.value as 'K' | 'C' | 'F' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -238,8 +262,10 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Chart Color Scheme</label>
+                    <label htmlFor="select-chart-color" className="block text-sm font-medium text-white/60 mb-2">Chart Color Scheme</label>
                     <select
+                        id="select-chart-color"
+                        aria-label="Chart Color Scheme"
                         value={settings.display.chartColorScheme}
                         onChange={(e) => updateDisplaySettings({ chartColorScheme: e.target.value as 'default' | 'colorblind' | 'monochrome' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -252,20 +278,25 @@ export default function SettingsPage() {
             </div>
         </div>
     );
+}
 
-    const renderBlockchainSettings = () => (
+// ── Panel: Blockchain ───────────────────────────────────────────────
+function BlockchainPanel() {
+    const { settings, updateBlockchainSettings } = useSettings();
+    const { user } = useDashboard();
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Blockchain & Wallet Settings</h3>
             <div className="p-4 bg-white/[0.03] border border-white/[0.07] rounded-xl">
                 <p className="text-sm font-medium text-white/60 mb-2">Connected Wallet</p>
-                <p className="font-mono text-sm text-white break-all">
-                    {user?.address || 'No wallet connected'}
-                </p>
+                <p className="font-mono text-sm text-white break-all">{user?.address || 'No wallet connected'}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Network</label>
+                    <label htmlFor="select-blockchain-network" className="block text-sm font-medium text-white/60 mb-2">Network</label>
                     <select
+                        id="select-blockchain-network"
+                        aria-label="Network"
                         value={settings.blockchain.network}
                         onChange={(e) => updateBlockchainSettings({ network: e.target.value as 'zksync-sepolia' | 'zksync-mainnet' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -275,8 +306,10 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Gas Limit Preference</label>
+                    <label htmlFor="select-gas-limit" className="block text-sm font-medium text-white/60 mb-2">Gas Limit Preference</label>
                     <select
+                        id="select-gas-limit"
+                        aria-label="Gas Limit Preference"
                         value={settings.blockchain.gasLimitPreference}
                         onChange={(e) => updateBlockchainSettings({ gasLimitPreference: e.target.value as 'low' | 'medium' | 'high' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -299,14 +332,20 @@ export default function SettingsPage() {
             </div>
         </div>
     );
+}
 
-    const renderMachinePreferences = () => (
+// ── Panel: Machines ─────────────────────────────────────────────────
+function MachinePanel() {
+    const { settings, updateMachinePreferences } = useSettings();
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Machine Preferences</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Default Machine</label>
+                    <label htmlFor="select-default-machine" className="block text-sm font-medium text-white/60 mb-2">Default Machine</label>
                     <select
+                        id="select-default-machine"
+                        aria-label="Default Machine"
                         value={settings.machinePreferences.defaultMachineId || ''}
                         onChange={(e) => updateMachinePreferences({ defaultMachineId: e.target.value ? parseInt(e.target.value) : null })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -318,24 +357,23 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">Favorite Machines</label>
+                    <span className="block text-sm font-medium text-white/60 mb-2">Favorite Machines</span>
                     <div className="flex gap-2">
                         {[1001, 2001, 3001].map((id) => (
                             <button
                                 key={id}
                                 onClick={() => {
                                     const favs = settings.machinePreferences.favoriteMachines;
-                                    if (favs.includes(id)) {
-                                        updateMachinePreferences({ favoriteMachines: favs.filter(f => f !== id) });
-                                    } else {
-                                        updateMachinePreferences({ favoriteMachines: [...favs, id] });
-                                    }
+                                    updateMachinePreferences({
+                                        favoriteMachines: favs.includes(id)
+                                            ? favs.filter(f => f !== id)
+                                            : [...favs, id]
+                                    });
                                 }}
-                                className={`px-4 py-2 rounded-lg border transition-colors ${
-                                    settings.machinePreferences.favoriteMachines.includes(id)
-                                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-400'
-                                        : 'border-white/[0.07] text-white/40'
-                                }`}
+                                className={`px-4 py-2 rounded-lg border transition-colors ${settings.machinePreferences.favoriteMachines.includes(id)
+                                    ? 'border-amber-500/50 bg-amber-500/15 text-amber-400'
+                                    : 'border-white/[0.07] text-white/40'
+                                    }`}
                             >
                                 {id === 1001 ? 'L' : id === 2001 ? 'M' : 'H'}
                             </button>
@@ -351,16 +389,22 @@ export default function SettingsPage() {
             </div>
         </div>
     );
+}
 
-    const renderPrivacySettings = () => (
+// ── Panel: Privacy ──────────────────────────────────────────────────
+function PrivacyPanel({ onSaved }: { onSaved: () => void }) {
+    const { settings, updateDataPrivacySettings, resetSettings } = useSettings();
+    return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Data & Privacy Settings</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
+                    <label htmlFor="select-data-retention" className="block text-sm font-medium text-white/60 mb-2">
                         <Database className="inline w-4 h-4 mr-1" /> Data Retention Period
                     </label>
                     <select
+                        id="select-data-retention"
+                        aria-label="Data Retention Period"
                         value={settings.dataPrivacy.dataRetentionDays}
                         onChange={(e) => updateDataPrivacySettings({ dataRetentionDays: parseInt(e.target.value) as 30 | 90 | 180 | 365 })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -372,10 +416,12 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
+                    <label htmlFor="select-export-format" className="block text-sm font-medium text-white/60 mb-2">
                         <FileDown className="inline w-4 h-4 mr-1" /> Export Format
                     </label>
                     <select
+                        id="select-export-format"
+                        aria-label="Export Format"
                         value={settings.dataPrivacy.exportFormat}
                         onChange={(e) => updateDataPrivacySettings({ exportFormat: e.target.value as 'csv' | 'json' | 'pdf' })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -386,10 +432,12 @@ export default function SettingsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
+                    <label htmlFor="select-session-timeout" className="block text-sm font-medium text-white/60 mb-2">
                         <Clock className="inline w-4 h-4 mr-1" /> Session Timeout
                     </label>
                     <select
+                        id="select-session-timeout"
+                        aria-label="Session Timeout"
                         value={settings.dataPrivacy.sessionTimeoutMinutes}
                         onChange={(e) => updateDataPrivacySettings({ sessionTimeoutMinutes: parseInt(e.target.value) as 15 | 30 | 60 | 120 })}
                         className="w-full px-4 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-transparent"
@@ -403,35 +451,50 @@ export default function SettingsPage() {
             </div>
             <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
                 <h4 className="font-medium text-red-400 mb-2">Danger Zone</h4>
-                <p className="text-sm text-red-300 mb-4">
-                    Reset all settings to their default values. This action cannot be undone.
-                </p>
+                <p className="text-sm text-red-300 mb-4">Reset all settings to their default values. This action cannot be undone.</p>
                 <button
                     onClick={() => {
                         if (confirm('Are you sure you want to reset all settings?')) {
                             resetSettings();
-                            showSaveMessage();
+                            onSaved();
                         }
                     }}
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
                 >
-                    <RotateCcw className="w-4 h-4" />
-                    Reset All Settings
+                    <RotateCcw className="w-4 h-4" /> Reset All Settings
                 </button>
             </div>
         </div>
     );
+}
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'profile': return renderProfileSettings();
-            case 'notifications': return renderNotificationSettings();
-            case 'display': return renderDisplaySettings();
-            case 'blockchain': return renderBlockchainSettings();
-            case 'machines': return renderMachinePreferences();
-            case 'privacy': return renderPrivacySettings();
-            default: return null;
-        }
+// ── Tab config ──────────────────────────────────────────────────────
+const TABS: { id: SettingsTab; label: string; icon: React.FC<any> }[] = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'display', label: 'Display', icon: Monitor },
+    { id: 'blockchain', label: 'Blockchain', icon: Wallet },
+    { id: 'machines', label: 'Machines', icon: Cpu },
+    { id: 'privacy', label: 'Data & Privacy', icon: Shield },
+];
+
+// ── Page ────────────────────────────────────────────────────────────
+export default function SettingsPage() {
+    const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+    const [saveMessage, setSaveMessage] = useState('');
+
+    const showSaveMessage = () => {
+        setSaveMessage('Settings saved successfully!');
+        setTimeout(() => setSaveMessage(''), 3000);
+    };
+
+    const panels: Record<SettingsTab, React.ReactNode> = {
+        profile: <ProfilePanel />,
+        notifications: <NotificationPanel />,
+        display: <DisplayPanel />,
+        blockchain: <BlockchainPanel />,
+        machines: <MachinePanel />,
+        privacy: <PrivacyPanel onSaved={showSaveMessage} />,
     };
 
     return (
@@ -440,60 +503,32 @@ export default function SettingsPage() {
                 <h1 className="text-2xl font-bold text-white">Settings</h1>
                 {saveMessage && (
                     <div className="px-4 py-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 rounded-lg flex items-center gap-2">
-                        <Save className="w-4 h-4" />
-                        {saveMessage}
+                        <Save className="w-4 h-4" /> {saveMessage}
                     </div>
                 )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6">
-                {/* Sidebar Tabs */}
                 <div className="lg:w-64 flex-shrink-0">
                     <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2">
-                        {tabs.map((tab) => (
+                        {TABS.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
-                                    activeTab === tab.id
-                                        ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-highlight)] border-l-2 border-[var(--accent-primary)]'
-                                        : 'text-white/40 hover:bg-white/[0.04] hover:text-white/70'
-                                }`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${activeTab === tab.id
+                                    ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-highlight)] border-l-2 border-[var(--accent-primary)]'
+                                    : 'text-white/40 hover:bg-white/[0.04] hover:text-white/70'
+                                    }`}
                             >
-                                <tab.icon className="w-5 h-5" />
-                                {tab.label}
+                                <tab.icon className="w-5 h-5" /> {tab.label}
                             </button>
                         ))}
                     </div>
                 </div>
-
-                {/* Content Area */}
                 <div className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] p-6">
-                    {renderContent()}
+                    {panels[activeTab]}
                 </div>
             </div>
         </div>
     );
 }
-
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: (val: boolean) => void }> = ({ checked, onChange }) => (
-    <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`
-            relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent
-            transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 focus:ring-offset-[#060b14]
-            ${checked ? 'bg-[var(--accent-primary)]' : 'bg-white/[0.15]'}
-        `}
-    >
-        <span
-            className={`
-                pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0
-                transition duration-200 ease-in-out
-                ${checked ? 'translate-x-5' : 'translate-x-0'}
-            `}
-        />
-    </button>
-);

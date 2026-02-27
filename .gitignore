@@ -109,6 +109,10 @@ compile_output.txt
 .classpath
 .settings/
 
+# ================== CLAUDE CODE ==================
+.claude/settings.local.json
+.agents/
+
 # ================== OS ==================
 .DS_Store
 .DS_Store?

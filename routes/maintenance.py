@@ -75,23 +75,56 @@ def create_maintenance_task(
     user: dict = Depends(require_role('ENGINEER', 'MANAGER', 'OWNER'))
 ):
     """Yeni bakım görevi oluştur"""
+    db = get_db_manager()
+
+    valid_priorities = ['LOW', 'MEDIUM', 'HIGH']
+    if priority.upper() not in valid_priorities:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geçersiz öncelik. Geçerli değerler: {', '.join(valid_priorities)}"
+        )
+
     try:
+        created_at = int(datetime.now().timestamp())
+        conn = db.get_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Veritabanı kullanılamıyor")
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO maintenance_tasks
+                    (machine_id, failure_type, priority, status, created_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    machine_id,
+                    task,
+                    priority.upper(),
+                    'PENDING',
+                    created_at,
+                    user.get('address')
+                ))
+                task_id = cur.fetchone()[0]
+            conn.commit()
+        finally:
+            db.return_connection(conn)
+
         new_task = {
-            'id': f"maint_{machine_id}_{datetime.now().timestamp()}",
+            'id': task_id,
             'machine_id': machine_id,
             'task': task,
             'due_date': due_date,
-            'priority': priority,
+            'priority': priority.upper(),
             'status': 'PENDING',
             'created_by': user.get('address'),
             'created_at': datetime.now().isoformat()
         }
 
-        # TODO: Veritabanına kaydet
-        # db.create_maintenance_task(new_task)
-
         return {"success": True, "task": new_task}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create maintenance task error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

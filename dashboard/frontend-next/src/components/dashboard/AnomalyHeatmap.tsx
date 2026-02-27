@@ -120,10 +120,17 @@ export function AnomalyHeatmap({ machines, metrics, data }: AnomalyHeatmapProps)
                                     return (
                                         <td key={metric} className="text-center">
                                             <div
+                                                role="button"
+                                                tabIndex={0}
                                                 className="relative h-10 rounded cursor-pointer flex items-center justify-center text-xs font-medium transition-all hover:scale-110"
                                                 style={{ backgroundColor: bg, border: `1px solid ${border}` }}
                                                 onMouseEnter={() => setTooltip({ machine, metric, count: cell.count, severity: cell.severity })}
                                                 onMouseLeave={() => setTooltip(null)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        setTooltip(tooltip ? null : { machine, metric, count: cell.count, severity: cell.severity });
+                                                    }
+                                                }}
                                             >
                                                 {cell.count > 0 && (
                                                     <span className="text-white/80">{cell.count}</span>

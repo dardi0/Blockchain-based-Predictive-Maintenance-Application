@@ -17,7 +17,7 @@ Endpoints:
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 
 from .dependencies import get_db_manager, require_role, get_current_user
 
@@ -25,14 +25,44 @@ router = APIRouter(tags=["Analytics"])
 logger = logging.getLogger(__name__)
 
 
+def _get_machines(db) -> list:
+    """Sensor data'dan dinamik olarak makine ID ve tiplerini döndür.
+
+    Fallback olarak [1001, 2001, 3001] kullanılır.
+    """
+    try:
+        conn = db.get_connection()
+        if not conn:
+            return [(1001, 'L'), (2001, 'M'), (3001, 'H')]
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT DISTINCT ON (machine_id) machine_id, machine_type
+                    FROM sensor_data
+                    ORDER BY machine_id, timestamp DESC
+                """)
+                rows = cur.fetchall()
+                if rows:
+                    return [(row[0], row[1] or 'L') for row in rows]
+        finally:
+            db.return_connection(conn)
+    except Exception:
+        pass
+    return [(1001, 'L'), (2001, 'M'), (3001, 'H')]
+
+
 @router.get("/analytics/anomalies")
-def get_anomalies(hours: int = 24, threshold: float = 2.0):
+def get_anomalies(
+    hours: int = Query(default=24, ge=1, le=168),
+    threshold: float = Query(default=2.0, ge=0.5, le=5.0)
+):
     """Son N saatteki anomalileri tespit et (Z-score tabanlı)"""
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
         all_data = []
-        for machine_id in [1001, 2001, 3001]:
+        for machine_id, _ in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=500)
             for record in history:
                 record['machine_id'] = machine_id
@@ -106,9 +136,10 @@ def get_machine_comparison():
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
         machines_data = []
 
-        for machine_id in [1001, 2001, 3001]:
+        for machine_id, machine_type in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=100)
 
             if not history:
@@ -181,7 +212,7 @@ def get_machine_comparison():
 
             machines_data.append({
                 'machine_id': machine_id,
-                'machine_type': 'L' if machine_id == 1001 else 'M' if machine_id == 2001 else 'H',
+                'machine_type': machine_type,
                 'total_records': len(history),
                 'failure_count': failures,
                 'failure_rate': round(failures / len(history) * 100, 1) if history else 0,
@@ -203,7 +234,10 @@ def get_machine_comparison():
 
 
 @router.get("/activity")
-def get_recent_activity(limit: int = 10, user: dict = Depends(require_role('MANAGER', 'ENGINEER', 'OWNER'))):
+def get_recent_activity(
+    limit: int = Query(default=10, ge=1, le=100),
+    user: dict = Depends(require_role('MANAGER', 'ENGINEER', 'OWNER'))
+):
     """Son sistem olaylarını getir"""
     db = get_db_manager()
 
@@ -248,8 +282,9 @@ def get_failure_modes():
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
         result = []
-        for machine_id in [1001, 2001, 3001]:
+        for machine_id, machine_type in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=500)
             failures = [r for r in history if r.get('prediction', 0) == 1]
 
@@ -280,7 +315,6 @@ def get_failure_modes():
                 if not classified:
                     counts['RNF'] += 1
 
-            machine_type = 'L' if machine_id == 1001 else 'M' if machine_id == 2001 else 'H'
             result.append({
                 'machine_id': machine_id,
                 'machine_type': machine_type,
@@ -296,17 +330,17 @@ def get_failure_modes():
 
 
 @router.get("/analytics/tool-wear-trend")
-def get_tool_wear_trend(days: int = 14):
+def get_tool_wear_trend(days: int = Query(default=14, ge=1, le=365)):
     """Son N gündeki takım aşınma trendini makineye göre döndür"""
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
         machines_data = []
         cutoff = datetime.now() - timedelta(days=days)
 
-        for machine_id in [1001, 2001, 3001]:
+        for machine_id, machine_type in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=1000)
-            machine_type = 'L' if machine_id == 1001 else 'M' if machine_id == 2001 else 'H'
 
             # Group by day
             daily: dict = {}
@@ -361,12 +395,12 @@ def get_rul_estimates():
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
         result = []
         cutoff = datetime.now() - timedelta(days=7)
 
-        for machine_id in [1001, 2001, 3001]:
+        for machine_id, machine_type in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=500)
-            machine_type = 'L' if machine_id == 1001 else 'M' if machine_id == 2001 else 'H'
 
             # Collect (day_index, tool_wear) pairs from last 7 days
             points = []
@@ -451,7 +485,7 @@ def get_rul_estimates():
 
 
 @router.get("/analytics/maintenance-timeline")
-def get_maintenance_timeline(days: int = 90):
+def get_maintenance_timeline(days: int = Query(default=90, ge=1, le=365)):
     """Son N gündeki bakım kayıtlarını döndür"""
     db = get_db_manager()
 
@@ -497,17 +531,18 @@ def get_maintenance_timeline(days: int = 90):
 
 
 @router.get("/analytics/anomaly-frequency")
-def get_anomaly_frequency(days: int = 30):
+def get_anomaly_frequency(days: int = Query(default=30, ge=1, le=365)):
     """Son N gündeki anomali frekansını (makine x metrik) hesapla"""
     db = get_db_manager()
 
     try:
+        machines = _get_machines(db)
+        machine_ids = [m[0] for m in machines]
         all_data = []
-        machine_ids = [1001, 2001, 3001]
         metrics = ['air_temp', 'process_temp', 'rotation_speed', 'torque', 'tool_wear']
         cutoff = datetime.now() - timedelta(days=days)
 
-        for machine_id in machine_ids:
+        for machine_id, _ in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=1000)
             for record in history:
                 ts = record.get('timestamp') or record.get('created_at')
@@ -592,14 +627,13 @@ def get_kpi_metrics():
     db = get_db_manager()
 
     try:
-        machine_ids = [1001, 2001, 3001]
+        machines = _get_machines(db)
         kpi_result = {'machines': [], 'overall': {}}
 
         all_health_scores = []
 
-        for machine_id in machine_ids:
+        for machine_id, machine_type in machines:
             history = db.get_sensor_data(machine_id=machine_id, limit=1000)
-            machine_type = 'L' if machine_id == 1001 else 'M' if machine_id == 2001 else 'H'
 
             if not history:
                 continue

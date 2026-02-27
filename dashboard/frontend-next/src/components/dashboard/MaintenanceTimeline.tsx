@@ -11,7 +11,7 @@ interface MaintenanceTimelineProps {
 const TYPE_CONFIG: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
     PREVENTIVE: { color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30', icon: Shield, label: 'Preventive' },
     CORRECTIVE: { color: 'text-amber-400', bg: 'bg-amber-500/15 border-amber-500/30', icon: Wrench, label: 'Corrective' },
-    EMERGENCY:  { color: 'text-red-400',   bg: 'bg-red-500/15 border-red-500/30',       icon: AlertTriangle, label: 'Emergency' },
+    EMERGENCY: { color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/30', icon: AlertTriangle, label: 'Emergency' },
 };
 
 function getTypeConfig(type: string) {
@@ -50,9 +50,12 @@ export function MaintenanceTimeline({ events }: MaintenanceTimelineProps) {
 
                 return (
                     <div
-                        key={`${event.id}-${idx}`}
+                        key={event.id}
+                        role="button"
+                        tabIndex={0}
                         className="relative flex gap-4 cursor-pointer"
                         onClick={() => setExpanded(isExpanded ? null : idx)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded(isExpanded ? null : idx); }}
                     >
                         {/* Dot */}
                         <div className={`relative z-10 flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center border ${cfg.bg}`}>

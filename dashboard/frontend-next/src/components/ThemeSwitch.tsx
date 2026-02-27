@@ -4,18 +4,18 @@ import React, { useEffect, useState } from 'react';
 import styles from './ThemeSwitch.module.css';
 
 const ThemeSwitch = () => {
-    const [isDark, setIsDark] = useState(false);
+    const [isDark, setIsDark] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return (
+            localStorage.getItem('theme') === 'dark' ||
+            (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        );
+    });
 
     useEffect(() => {
-        // Check initial theme
-        if (localStorage.getItem('theme') === 'dark' ||
-            (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            setIsDark(true);
-            document.documentElement.classList.add('dark');
-        } else {
-            setIsDark(false);
-            document.documentElement.classList.remove('dark');
-        }
+        // Sync DOM class on mount (no setState — avoids effect-set-state warning)
+        document.documentElement.classList.toggle('dark', isDark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const toggleTheme = () => {
@@ -31,12 +31,13 @@ const ThemeSwitch = () => {
     };
 
     return (
-        <label className={`${styles['theme-switch']} ${isDark ? styles.checked : ''}`}>
+        <label suppressHydrationWarning className={`${styles['theme-switch']} ${isDark ? styles.checked : ''}`}>
             <input
                 type="checkbox"
                 className={styles.checkbox}
                 checked={isDark}
                 onChange={toggleTheme}
+                aria-label="Toggle dark/light theme"
             />
             <div className={styles.container}>
                 <div className={styles.clouds} />

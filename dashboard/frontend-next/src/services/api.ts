@@ -235,6 +235,19 @@ export const api = {
         }
     },
 
+    async getLiveSensorData(limit: number = 20): Promise<{ data: any[]; count: number }> {
+        try {
+            const response = await fetch(`${API_URL}/sensor-data/live?limit=${limit}`, {
+                headers: buildHeaders(),
+            });
+            if (!response.ok) throw new Error('Failed to fetch live sensor data');
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+
     async saveSensorData(machineId: string | number, payload: SensorData, walletAddress?: string): Promise<{ record_id: number }> {
         try {
             const response = await fetch(`${API_URL}/sensor-data?machine_id=${machineId}`, {

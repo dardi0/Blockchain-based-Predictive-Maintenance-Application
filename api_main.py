@@ -62,11 +62,76 @@ except ImportError:
     HAS_AUTOMATION_LISTENER = False
     AutomationEventListener = None
 
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- STARTUP ---
+    global model, scaler, optimal_threshold, automation_listener_task
+
+    if not os.path.exists(FilePaths.MODEL_PATH) or not os.path.exists(FilePaths.SCALER_PATH):
+        print("⚠️ UYARI: Model dosyaları bulunamadı.")
+    else:
+        print("🤖 Model ve Scaler yükleniyor...")
+
+    try:
+        model = tf.keras.models.load_model(FilePaths.MODEL_PATH, compile=False)
+        scaler = joblib.load(FilePaths.SCALER_PATH)
+        print("✅ Model ve Scaler başarıyla yüklendi.")
+
+        metadata_path = FilePaths.MODEL_PATH.parent / 'model_metadata.pkl'
+        if metadata_path.exists():
+            try:
+                metadata = joblib.load(metadata_path)
+                loaded_threshold = metadata.get('optimal_threshold')
+                if loaded_threshold:
+                    optimal_threshold = float(loaded_threshold)
+                    print(f"🎯 Optimal eşik değeri: {optimal_threshold:.3f}")
+            except Exception as e:
+                print(f"⚠️ Metadata okuma hatası: {e}")
+
+    except Exception as e:
+        print(f"❌ Model yükleme hatası: {e}")
+
+    _init_blockchain_handler()
+    _start_monitor()
+
+    route_deps.set_blockchain_handler(blockchain_handler)
+
+    from routes import predictions
+    predictions.set_model_refs(model, scaler, optimal_threshold, feature_names)
+
+    # Expose control functions to automation router
+    from routes import automation
+    automation.set_automation_refs(
+        automation_listener,
+        automation_listener_task,
+        AUTOMATION_ENABLED,
+        HAS_AUTOMATION_LISTENER
+    )
+    automation.set_control_functions(
+        restart_listener_task=restart_automation_listener,
+        trigger_manual_prediction=trigger_manual_prediction
+    )
+
+    if _init_automation_listener():
+        await start_automation_listener()
+
+    yield  # Uygulama bu noktada çalışır
+
+    # --- SHUTDOWN ---
+    _stop_blockchain_workers()
+    _stop_monitor()
+    _stop_automation_listener()
+
+
 # --- FastAPI Uygulaması ---
 app = FastAPI(
     title="Predictive Maintenance API",
     description="Makine arızalarını LSTM-CNN modeli ile tahmin eden ve kullanıcı yönetimi sağlayan API.",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 # Structured logging setup
@@ -91,7 +156,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": error_details, "body": error_details},
     )
 
-# Correlation-ID middleware — her isteğe benzersiz ID ekler
+# Correlation-ID middleware
 @app.middleware("http")
 async def correlation_id_middleware(request: Request, call_next):
     cid = request.headers.get("X-Correlation-ID") or set_correlation_id()
@@ -332,6 +397,22 @@ def _init_automation_listener():
         return False
 
 
+async def start_automation_listener():
+    global automation_listener_task
+    if automation_listener and (automation_listener_task is None or automation_listener_task.done()):
+        automation_listener_task = asyncio.create_task(_automation_listener_loop())
+        print("🚀 Automation listener background task started")
+        # Update refs in router
+        from routes import automation
+        automation.set_automation_refs(
+            automation_listener,
+            automation_listener_task,
+            AUTOMATION_ENABLED,
+            HAS_AUTOMATION_LISTENER
+        )
+        return True
+    return False
+
 def _stop_automation_listener():
     global automation_listener, automation_listener_task
 
@@ -343,6 +424,35 @@ def _stop_automation_listener():
     if automation_listener_task and not automation_listener_task.done():
         automation_listener_task.cancel()
         automation_listener_task = None
+
+async def restart_automation_listener():
+    _stop_automation_listener()
+    await asyncio.sleep(1)
+    if _init_automation_listener():
+        return await start_automation_listener()
+    return False
+
+async def trigger_manual_prediction(wallet_address: str = None):
+    """Manually triggers a prediction via the listener."""
+    if not automation_listener:
+        if not _init_automation_listener():
+            return {"success": False, "message": "Listener not available"}
+    
+    try:
+        # Generate a dummy event to reuse listener logic
+        dummy_event = {
+            'args': {
+                'requestId': os.urandom(32),
+                'timestamp': int(time.time()),
+                'requester': wallet_address or "0x0000000000000000000000000000000000000000"
+            }
+        }
+        # Run in thread to avoid blocking
+        await asyncio.to_thread(automation_listener.process_prediction_request, dummy_event)
+        return {"success": True, "message": "Manual prediction triggered"}
+    except Exception as e:
+        logger.error(f"Manual trigger error: {e}")
+        return {"success": False, "message": str(e)}
 
 
 # --- Transaction Monitor ---
@@ -586,76 +696,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         active_connections.discard(websocket)
-
-
-# --- FastAPI Events ---
-@app.on_event("startup")
-async def load_model_and_scaler():
-    global model, scaler, optimal_threshold, automation_listener_task
-
-    if not os.path.exists(FilePaths.MODEL_PATH) or not os.path.exists(FilePaths.SCALER_PATH):
-        print("⚠️ UYARI: Model dosyaları bulunamadı.")
-    else:
-        print("🤖 Model ve Scaler yükleniyor...")
-
-    try:
-        model = tf.keras.models.load_model(FilePaths.MODEL_PATH, compile=False)
-        scaler = joblib.load(FilePaths.SCALER_PATH)
-        print("✅ Model ve Scaler başarıyla yüklendi.")
-
-        metadata_path = FilePaths.MODEL_PATH.parent / 'model_metadata.pkl'
-        if metadata_path.exists():
-            try:
-                metadata = joblib.load(metadata_path)
-                loaded_threshold = metadata.get('optimal_threshold')
-                if loaded_threshold:
-                    optimal_threshold = float(loaded_threshold)
-                    print(f"🎯 Optimal eşik değeri: {optimal_threshold:.3f}")
-            except Exception as e:
-                print(f"⚠️ Metadata okuma hatası: {e}")
-
-    except Exception as e:
-        print(f"❌ Model yükleme hatası: {e}")
-
-    # Initialize blockchain
-    _init_blockchain_handler()
-    _start_monitor()
-
-    # Set shared references for route modules
-    route_deps.set_blockchain_handler(blockchain_handler)
-
-    # Set model references for predictions module
-    from routes import predictions
-    predictions.set_model_refs(model, scaler, optimal_threshold, feature_names)
-
-    # Set automation references
-    from routes import automation
-    automation.set_automation_refs(
-        automation_listener,
-        automation_listener_task,
-        AUTOMATION_ENABLED,
-        HAS_AUTOMATION_LISTENER
-    )
-
-    # Start automation listener
-    if _init_automation_listener():
-        automation_listener_task = asyncio.create_task(_automation_listener_loop())
-        print("🚀 Automation listener background task started")
-
-        # Update automation refs
-        automation.set_automation_refs(
-            automation_listener,
-            automation_listener_task,
-            AUTOMATION_ENABLED,
-            HAS_AUTOMATION_LISTENER
-        )
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    _stop_blockchain_workers()
-    _stop_monitor()
-    _stop_automation_listener()
 
 
 if __name__ == "__main__":

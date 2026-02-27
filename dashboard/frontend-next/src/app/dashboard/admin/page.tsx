@@ -1,51 +1,60 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useDashboard } from '@/components/DashboardShell';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserRole } from '@/types';
 import { api } from '@/services/api';
-import { User, UserRole } from '@/types';
+import { useDashboard } from '@/components/DashboardShell';
 import {
     Trash2, UserPlus, Shield, Check, X, AlertCircle,
     Activity, Zap, RefreshCw, Server, Link2, Clock,
     Play, Radio, Cpu, Database, CheckCircle2, XCircle
 } from 'lucide-react';
+import { useAdminLogic } from '@/components/hooks/useAdminLogic';
 
 function AutomationStatusPanel() {
-    const [automationStatus, setAutomationStatus] = useState<any>(null);
-    const [listenerStatus, setListenerStatus] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [restarting, setRestarting] = useState(false);
+    const [state, setState] = useState({
+        automationStatus: null as any,
+        listenerStatus: null as any,
+        loading: true,
+        restarting: false,
+    });
 
-    const fetchStatus = async () => {
+    const { automationStatus, listenerStatus, loading, restarting } = state;
+
+    const fetchStatus = useCallback(async () => {
+        let autoStatus = null;
+        let listenStatus = null;
         try {
-            const [autoStatus, listenStatus] = await Promise.all([
+            [autoStatus, listenStatus] = await Promise.all([
                 api.getAutomationStatus().catch(() => null),
                 api.getListenerStatus().catch(() => null)
             ]);
-            setAutomationStatus(autoStatus);
-            setListenerStatus(listenStatus);
         } catch (e) {
             console.error('Failed to fetch automation status', e);
-        } finally {
-            setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 10000);
-        return () => clearInterval(interval);
+        return { autoStatus, listenStatus };
     }, []);
 
+    useEffect(() => {
+        const load = () => fetchStatus().then(({ autoStatus, listenStatus }) => {
+            setState(prev => ({ ...prev, automationStatus: autoStatus, listenerStatus: listenStatus, loading: false }));
+        });
+        load();
+        const interval = setInterval(load, 10000);
+        return () => clearInterval(interval);
+    }, [fetchStatus]);
+
     const handleRestartListener = async () => {
-        setRestarting(true);
+        setState(prev => ({ ...prev, restarting: true }));
         try {
             await api.restartListener();
-            await fetchStatus();
+            const { autoStatus, listenStatus } = await fetchStatus();
+            setState(prev => ({ ...prev, automationStatus: autoStatus, listenerStatus: listenStatus, restarting: false }));
         } catch (e: any) {
-            alert(e.message || 'Failed to restart listener');
-        } finally {
-            setRestarting(false);
+            let msg = 'Failed to restart listener';
+            if (e && e.message) msg = e.message;
+            alert(msg);
+            setState(prev => ({ ...prev, restarting: false }));
         }
     };
 
@@ -55,8 +64,8 @@ function AutomationStatusPanel() {
                 <div className="animate-pulse space-y-4">
                     <div className="h-6 bg-white/[0.06] rounded w-1/3"></div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-24 bg-white/[0.04] rounded-xl"></div>
+                        {['skel-admin-1', 'skel-admin-2', 'skel-admin-3', 'skel-admin-4'].map(id => (
+                            <div key={id} className="h-24 bg-white/[0.04] rounded-xl"></div>
                         ))}
                     </div>
                 </div>
@@ -189,117 +198,253 @@ function AutomationStatusPanel() {
     );
 }
 
+const AddUserModal: React.FC<any> = ({ isAddModalOpen, setIsAddModalOpen, setFormError, handleAddUser, formError, newUser, updateNewUser, submitting }) => {
+    if (!isAddModalOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+            <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-md w-full overflow-hidden animate-zoom-in">
+                <div className="p-6 border-b border-white/[0.07] flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-white">Invite New User</h2>
+                    <button onClick={() => { setIsAddModalOpen(false); setFormError(null); }} className="text-white/30 hover:text-white/70">
+                        <X size={20} />
+                    </button>
+                </div>
+                <form onSubmit={handleAddUser} className="p-6 space-y-4">
+                    {formError && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                            <AlertCircle size={16} />{formError}
+                        </div>
+                    )}
+                    <div>
+                        <label htmlFor="new-user-address" className="block text-sm font-medium text-white/60 mb-1">Wallet Address <span className="text-red-400">*</span></label>
+                        <input id="new-user-address" aria-label="Wallet Address" type="text" required value={newUser.address} onChange={(e) => updateNewUser('address', e.target.value)} placeholder="0x..."
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                    </div>
+                    <div>
+                        <label htmlFor="new-user-name" className="block text-sm font-medium text-white/60 mb-1">Full Name <span className="text-red-400">*</span></label>
+                        <input id="new-user-name" aria-label="Full Name" type="text" required value={newUser.name} onChange={(e) => updateNewUser('name', e.target.value)} placeholder="Ahmet Yılmaz"
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="new-user-email" className="block text-sm font-medium text-white/60 mb-1">Email</label>
+                            <input id="new-user-email" aria-label="Email" type="email" value={newUser.email} onChange={(e) => updateNewUser('email', e.target.value)} placeholder="ahmet@firma.com"
+                                className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                        </div>
+                        <div>
+                            <label htmlFor="new-user-dept" className="block text-sm font-medium text-white/60 mb-1">Department</label>
+                            <input id="new-user-dept" aria-label="Department" type="text" value={newUser.department} onChange={(e) => updateNewUser('department', e.target.value)} placeholder="Üretim"
+                                className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="new-user-role" className="block text-sm font-medium text-white/60 mb-1">Role <span className="text-red-400">*</span></label>
+                        <select id="new-user-role" aria-label="Role" value={newUser.role} onChange={(e) => updateNewUser('role', e.target.value as UserRole)}
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all">
+                            <option value={UserRole.OPERATOR} className="bg-[#0a1020]">OPERATOR</option>
+                            <option value={UserRole.ENGINEER} className="bg-[#0a1020]">ENGINEER</option>
+                            <option value={UserRole.MANAGER} className="bg-[#0a1020]">MANAGER</option>
+                        </select>
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                        <button type="button" onClick={() => setIsAddModalOpen(false)}
+                            className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors">Cancel</button>
+                        <button type="submit" disabled={submitting}
+                            className="flex-1 px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors disabled:opacity-50 font-medium">
+                            {submitting ? 'Inviting...' : 'Invite User'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const EditUserModal: React.FC<any> = ({ selectedUser, isEditMode, setIsEditMode, setSelectedUser, setFormError, handleUpdateUser, formError, submitting }) => {
+    if (!(selectedUser && isEditMode)) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+            <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-md w-full overflow-hidden animate-zoom-in">
+                <div className="p-6 border-b border-white/[0.07] flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-white">Edit User</h2>
+                    <button onClick={() => { setIsEditMode(false); setSelectedUser(null); setFormError(null); }} className="text-white/30 hover:text-white/70"><X size={20} /></button>
+                </div>
+                <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+                    {formError && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                            <AlertCircle size={16} />{formError}
+                        </div>
+                    )}
+                    <div>
+                        <label htmlFor="edit-user-name" className="block text-sm font-medium text-white/60 mb-1">Full Name <span className="text-red-400">*</span></label>
+                        <input id="edit-user-name" aria-label="Full Name" type="text" required defaultValue={selectedUser.name} name="name"
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="edit-user-email" className="block text-sm font-medium text-white/60 mb-1">Email</label>
+                            <input id="edit-user-email" aria-label="Email" type="email" defaultValue={selectedUser.email} name="email"
+                                className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                        </div>
+                        <div>
+                            <label htmlFor="edit-user-dept" className="block text-sm font-medium text-white/60 mb-1">Department</label>
+                            <input id="edit-user-dept" aria-label="Department" type="text" defaultValue={selectedUser.department} name="department"
+                                className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="edit-user-role" className="block text-sm font-medium text-white/60 mb-1">Role <span className="text-red-400">*</span></label>
+                        <select id="edit-user-role" aria-label="Role" defaultValue={selectedUser.role} name="role"
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all">
+                            <option value={UserRole.OPERATOR} className="bg-[#0a1020]">OPERATOR</option>
+                            <option value={UserRole.ENGINEER} className="bg-[#0a1020]">ENGINEER</option>
+                            <option value={UserRole.MANAGER} className="bg-[#0a1020]">MANAGER</option>
+                        </select>
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                        <button type="button" onClick={() => { setIsEditMode(false); setSelectedUser(null); }}
+                            className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors">Cancel</button>
+                        <button type="submit" disabled={submitting}
+                            className="flex-1 px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors disabled:opacity-50 font-medium">
+                            {submitting ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const DeleteConfirmationModal: React.FC<any> = ({ userToDelete, setUserToDelete, confirmDeleteUser }) => {
+    if (!userToDelete) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+            <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-sm w-full p-6 text-center animate-zoom-in">
+                <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4 text-red-400">
+                    <Trash2 size={24} />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Delete User?</h2>
+                <p className="text-white/40 mb-6">Are you sure you want to delete this user? This action cannot be undone.</p>
+                <div className="flex gap-3">
+                    <button onClick={() => setUserToDelete(null)}
+                        className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors font-medium">Cancel</button>
+                    <button onClick={confirmDeleteUser}
+                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium">Delete</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const UserDetailModal: React.FC<any> = ({ selectedUser, isEditMode, getRoleBadgeColor, setSelectedUser, user, setIsEditMode, setUserToDelete }) => {
+    if (!(selectedUser && !isEditMode)) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+            <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-lg w-full overflow-hidden animate-zoom-in">
+                <div className="p-6 border-b border-white/[0.07] flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${getRoleBadgeColor(selectedUser.role)}`}>
+                            {selectedUser.name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">{selectedUser.name || 'Unnamed User'}</h2>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(selectedUser.role)}`}>{selectedUser.role}</span>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedUser.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' :
+                                    selectedUser.status === 'pending' ? 'bg-amber-500/15 text-amber-300' :
+                                        'bg-red-500/15 text-red-300'
+                                    }`}>{selectedUser.status || 'active'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={() => setSelectedUser(null)} className="text-white/30 hover:text-white/70 p-1"><X size={20} /></button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
+                        <span className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Wallet Address</span>
+                        <div className="flex items-center gap-2">
+                            <code className="flex-1 text-sm font-mono text-white/60 break-all">{selectedUser.address}</code>
+                            <a href={`https://sepolia.explorer.zksync.io/address/${selectedUser.address}`} target="_blank" rel="noopener noreferrer"
+                                className="px-2 py-1 bg-[var(--accent-primary)]/15 text-[var(--accent-highlight)] rounded text-xs font-medium hover:bg-[var(--accent-primary)]/25 transition-colors">Explorer</a>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {selectedUser.email && (
+                            <div>
+                                <span className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Email</span>
+                                <p className="text-sm text-white/60">{selectedUser.email}</p>
+                            </div>
+                        )}
+                        {selectedUser.department && (
+                            <div>
+                                <span className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Department</span>
+                                <p className="text-sm text-white/60">{selectedUser.department}</p>
+                            </div>
+                        )}
+                        <div>
+                            <span className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Created</span>
+                            <p className="text-sm text-white/60">{selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString('tr-TR') : '-'}</p>
+                        </div>
+                        {selectedUser.activated_at && (
+                            <div>
+                                <span className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Activated</span>
+                                <p className="text-sm text-white/60">{new Date(selectedUser.activated_at).toLocaleString('tr-TR')}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {selectedUser.blockchain_node_id && (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider">Blockchain Registered</span>
+                            </div>
+                            <code className="text-xs font-mono text-emerald-300 break-all">Node ID: {selectedUser.blockchain_node_id}</code>
+                            {selectedUser.blockchain_registered_at && (
+                                <p className="text-xs text-emerald-400 mt-1">{new Date(selectedUser.blockchain_registered_at).toLocaleString('tr-TR')}</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6 border-t border-white/[0.07] flex justify-between gap-3">
+                    <div className="flex gap-3">
+                        {user?.role === UserRole.OWNER && (
+                            <button onClick={() => setIsEditMode(true)}
+                                className="px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors font-medium">Edit</button>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        {selectedUser.role !== UserRole.OWNER && (
+                            <button onClick={() => { setUserToDelete(selectedUser.address); setSelectedUser(null); }}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2">
+                                <Trash2 size={16} /> Delete User
+                            </button>
+                        )}
+                        <button onClick={() => setSelectedUser(null)}
+                            className="px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors font-medium">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function AdminPage() {
-    const { user } = useDashboard();
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-    const [newUserAddress, setNewUserAddress] = useState('');
-    const [newUserRole, setNewUserRole] = useState<UserRole>(UserRole.OPERATOR);
-    const [newUserName, setNewUserName] = useState('');
-    const [newUserEmail, setNewUserEmail] = useState('');
-    const [newUserDepartment, setNewUserDepartment] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [userToDelete, setUserToDelete] = useState<string | null>(null);
-    const [formError, setFormError] = useState<string | null>(null);
-    const [selectedUser, setSelectedUser] = useState<any | null>(null);
-    const [isEditMode, setIsEditMode] = useState(false);
-
-    useEffect(() => {
-        if (user?.role === UserRole.OWNER) {
-            loadUsers();
-        } else if (user) {
-            setError("Unauthorized access");
-            setLoading(false);
-        }
-    }, [user]);
-
-    const loadUsers = async () => {
-        if (!user?.address) return;
-        setLoading(true);
-        try {
-            const response = await api.adminGetUsers(user.address);
-            const usersData = Array.isArray(response) ? response : (response.users || []);
-            setUsers(usersData);
-            setError(null);
-        } catch (e: any) {
-            setError(e.message || "Failed to load users");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleUpdateUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user?.address || !selectedUser) return;
-        setSubmitting(true);
-        setFormError(null);
-        const formData = new FormData(e.target as HTMLFormElement);
-        const data = {
-            name: formData.get('name') as string,
-            email: formData.get('email') as string,
-            department: formData.get('department') as string,
-            role: formData.get('role') as string
-        };
-        try {
-            const result = await api.adminUpdateUser(selectedUser.address, data, user.address);
-            setUsers(users.map(u => u.address === selectedUser.address ? { ...u, ...result.user } : u));
-            setSelectedUser({ ...selectedUser, ...result.user });
-            setIsEditMode(false);
-        } catch (e: any) {
-            setFormError(e.message || "Failed to update user");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleAddUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user?.address) return;
-        setSubmitting(true);
-        setFormError(null);
-        try {
-            await api.adminAddUser({
-                address: newUserAddress, role: newUserRole, name: newUserName,
-                email: newUserEmail || undefined, department: newUserDepartment || undefined
-            }, user.address);
-            setIsAddModalOpen(false);
-            setNewUserAddress(''); setNewUserName(''); setNewUserEmail(''); setNewUserDepartment('');
-            setNewUserRole(UserRole.OPERATOR);
-            loadUsers();
-        } catch (e: any) {
-            setFormError(e.message || "Failed to invite user");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const confirmDeleteUser = async () => {
-        if (!user?.address || !userToDelete) return;
-        try {
-            await api.adminDeleteUser(userToDelete, user.address);
-            loadUsers();
-            setUserToDelete(null);
-        } catch (e: any) {
-            setFormError(e.message || "Failed to delete user");
-            setUserToDelete(null);
-        }
-    };
+    const {
+        user, users, loading, error, isAddModalOpen,
+        newUser, submitting, userToDelete, formError,
+        selectedUser, isEditMode,
+        loadUsers, handleUpdateUser, handleAddUser,
+        confirmDeleteUser, getRoleBadgeColor,
+        setIsAddModalOpen, setUserToDelete, setSelectedUser,
+        setIsEditMode, setFormError, updateNewUser,
+    } = useAdminLogic();
 
     if (!user) return <div className="p-8 text-center text-white/30">Loading session...</div>;
     if (user.role !== UserRole.OWNER) return <div className="p-8 text-center text-red-400">Access Denied</div>;
-
-    const getRoleBadgeColor = (role: string) => {
-        switch (role) {
-            case UserRole.OWNER: return 'bg-purple-500/15 text-purple-300';
-            case UserRole.MANAGER: return 'bg-[var(--accent-primary)]/15 text-[var(--accent-highlight)]';
-            case UserRole.ENGINEER: return 'bg-amber-500/15 text-amber-300';
-            case UserRole.OPERATOR: return 'bg-emerald-500/15 text-emerald-300';
-            default: return 'bg-white/[0.06] text-white/60';
-        }
-    };
 
     return (
         <div className="space-y-8 animate-fade-in-up">
@@ -376,11 +521,10 @@ export default function AdminPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                (u as any).status === 'active' ? 'bg-emerald-500/15 text-emerald-300' :
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(u as any).status === 'active' ? 'bg-emerald-500/15 text-emerald-300' :
                                                 (u as any).status === 'pending' ? 'bg-amber-500/15 text-amber-300' :
-                                                'bg-red-500/15 text-red-300'
-                                            }`}>
+                                                    'bg-red-500/15 text-red-300'
+                                                }`}>
                                                 {(u as any).status || 'active'}
                                             </span>
                                         </td>
@@ -412,231 +556,16 @@ export default function AdminPage() {
             </div>
 
             {/* Add User Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-                    <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-md w-full overflow-hidden animate-zoom-in">
-                        <div className="p-6 border-b border-white/[0.07] flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-white">Invite New User</h2>
-                            <button onClick={() => { setIsAddModalOpen(false); setFormError(null); }} className="text-white/30 hover:text-white/70">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleAddUser} className="p-6 space-y-4">
-                            {formError && (
-                                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
-                                    <AlertCircle size={16} />{formError}
-                                </div>
-                            )}
-                            <div>
-                                <label className="block text-sm font-medium text-white/60 mb-1">Wallet Address <span className="text-red-400">*</span></label>
-                                <input type="text" required value={newUserAddress} onChange={(e) => setNewUserAddress(e.target.value)} placeholder="0x..."
-                                    className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-white/60 mb-1">Full Name <span className="text-red-400">*</span></label>
-                                <input type="text" required value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Ahmet Yılmaz"
-                                    className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-white/60 mb-1">Email</label>
-                                    <input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="ahmet@firma.com"
-                                        className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-white/60 mb-1">Department</label>
-                                    <input type="text" value={newUserDepartment} onChange={(e) => setNewUserDepartment(e.target.value)} placeholder="Üretim"
-                                        className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white placeholder:text-white/20 focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-white/60 mb-1">Role <span className="text-red-400">*</span></label>
-                                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                                    className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all">
-                                    <option value={UserRole.OPERATOR} className="bg-[#0a1020]">OPERATOR</option>
-                                    <option value={UserRole.ENGINEER} className="bg-[#0a1020]">ENGINEER</option>
-                                    <option value={UserRole.MANAGER} className="bg-[#0a1020]">MANAGER</option>
-                                </select>
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setIsAddModalOpen(false)}
-                                    className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors">Cancel</button>
-                                <button type="submit" disabled={submitting}
-                                    className="flex-1 px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors disabled:opacity-50 font-medium">
-                                    {submitting ? 'Inviting...' : 'Invite User'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <AddUserModal isAddModalOpen={isAddModalOpen} setIsAddModalOpen={setIsAddModalOpen} setFormError={setFormError} handleAddUser={handleAddUser} formError={formError} newUser={newUser} updateNewUser={updateNewUser} submitting={submitting} />
 
             {/* Edit User Modal */}
-            {selectedUser && isEditMode && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-                    <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-md w-full overflow-hidden animate-zoom-in">
-                        <div className="p-6 border-b border-white/[0.07] flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-white">Edit User</h2>
-                            <button onClick={() => { setIsEditMode(false); setSelectedUser(null); setFormError(null); }} className="text-white/30 hover:text-white/70"><X size={20} /></button>
-                        </div>
-                        <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
-                            {formError && (
-                                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
-                                    <AlertCircle size={16} />{formError}
-                                </div>
-                            )}
-                            <div>
-                                <label className="block text-sm font-medium text-white/60 mb-1">Full Name <span className="text-red-400">*</span></label>
-                                <input type="text" required defaultValue={selectedUser.name} name="name"
-                                    className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-white/60 mb-1">Email</label>
-                                    <input type="email" defaultValue={selectedUser.email} name="email"
-                                        className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-white/60 mb-1">Department</label>
-                                    <input type="text" defaultValue={selectedUser.department} name="department"
-                                        className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-white/60 mb-1">Role <span className="text-red-400">*</span></label>
-                                <select defaultValue={selectedUser.role} name="role"
-                                    className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] outline-none transition-all">
-                                    <option value={UserRole.OPERATOR} className="bg-[#0a1020]">OPERATOR</option>
-                                    <option value={UserRole.ENGINEER} className="bg-[#0a1020]">ENGINEER</option>
-                                    <option value={UserRole.MANAGER} className="bg-[#0a1020]">MANAGER</option>
-                                </select>
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => { setIsEditMode(false); setSelectedUser(null); }}
-                                    className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors">Cancel</button>
-                                <button type="submit" disabled={submitting}
-                                    className="flex-1 px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors disabled:opacity-50 font-medium">
-                                    {submitting ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <EditUserModal selectedUser={selectedUser} isEditMode={isEditMode} setIsEditMode={setIsEditMode} setSelectedUser={setSelectedUser} setFormError={setFormError} handleUpdateUser={handleUpdateUser} formError={formError} submitting={submitting} />
 
             {/* Delete Confirmation */}
-            {userToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-                    <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-sm w-full p-6 text-center animate-zoom-in">
-                        <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4 text-red-400">
-                            <Trash2 size={24} />
-                        </div>
-                        <h2 className="text-xl font-bold text-white mb-2">Delete User?</h2>
-                        <p className="text-white/40 mb-6">Are you sure you want to delete this user? This action cannot be undone.</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setUserToDelete(null)}
-                                className="flex-1 px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors font-medium">Cancel</button>
-                            <button onClick={confirmDeleteUser}
-                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium">Delete</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DeleteConfirmationModal userToDelete={userToDelete} setUserToDelete={setUserToDelete} confirmDeleteUser={confirmDeleteUser} />
 
             {/* User Detail Modal */}
-            {selectedUser && !isEditMode && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-                    <div className="bg-[#0c1322]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 max-w-lg w-full overflow-hidden animate-zoom-in">
-                        <div className="p-6 border-b border-white/[0.07] flex justify-between items-start">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${getRoleBadgeColor(selectedUser.role)}`}>
-                                    {selectedUser.name?.[0]?.toUpperCase() || 'U'}
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">{selectedUser.name || 'Unnamed User'}</h2>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(selectedUser.role)}`}>{selectedUser.role}</span>
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            selectedUser.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' :
-                                            selectedUser.status === 'pending' ? 'bg-amber-500/15 text-amber-300' :
-                                            'bg-red-500/15 text-red-300'
-                                        }`}>{selectedUser.status || 'active'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => setSelectedUser(null)} className="text-white/30 hover:text-white/70 p-1"><X size={20} /></button>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
-                                <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Wallet Address</label>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 text-sm font-mono text-white/60 break-all">{selectedUser.address}</code>
-                                    <a href={`https://sepolia.explorer.zksync.io/address/${selectedUser.address}`} target="_blank" rel="noopener noreferrer"
-                                        className="px-2 py-1 bg-[var(--accent-primary)]/15 text-[var(--accent-highlight)] rounded text-xs font-medium hover:bg-[var(--accent-primary)]/25 transition-colors">Explorer</a>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                {selectedUser.email && (
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Email</label>
-                                        <p className="text-sm text-white/60">{selectedUser.email}</p>
-                                    </div>
-                                )}
-                                {selectedUser.department && (
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Department</label>
-                                        <p className="text-sm text-white/60">{selectedUser.department}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Created</label>
-                                    <p className="text-sm text-white/60">{selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString('tr-TR') : '-'}</p>
-                                </div>
-                                {selectedUser.activated_at && (
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Activated</label>
-                                        <p className="text-sm text-white/60">{new Date(selectedUser.activated_at).toLocaleString('tr-TR')}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {selectedUser.blockchain_node_id && (
-                                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                        <label className="text-xs font-medium text-emerald-400 uppercase tracking-wider">Blockchain Registered</label>
-                                    </div>
-                                    <code className="text-xs font-mono text-emerald-300 break-all">Node ID: {selectedUser.blockchain_node_id}</code>
-                                    {selectedUser.blockchain_registered_at && (
-                                        <p className="text-xs text-emerald-400 mt-1">{new Date(selectedUser.blockchain_registered_at).toLocaleString('tr-TR')}</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-6 border-t border-white/[0.07] flex justify-between gap-3">
-                            <div className="flex gap-3">
-                                {user?.role === UserRole.OWNER && (
-                                    <button onClick={() => setIsEditMode(true)}
-                                        className="px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/80 text-white rounded-lg transition-colors font-medium">Edit</button>
-                                )}
-                            </div>
-                            <div className="flex gap-3">
-                                {selectedUser.role !== UserRole.OWNER && (
-                                    <button onClick={() => { setUserToDelete(selectedUser.address); setSelectedUser(null); }}
-                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2">
-                                        <Trash2 size={16} /> Delete User
-                                    </button>
-                                )}
-                                <button onClick={() => setSelectedUser(null)}
-                                    className="px-4 py-2 border border-white/[0.07] text-white/40 rounded-lg hover:bg-white/[0.04] transition-colors font-medium">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <UserDetailModal selectedUser={selectedUser} isEditMode={isEditMode} getRoleBadgeColor={getRoleBadgeColor} setSelectedUser={setSelectedUser} user={user} setIsEditMode={setIsEditMode} setUserToDelete={setUserToDelete} />
         </div>
     );
 }

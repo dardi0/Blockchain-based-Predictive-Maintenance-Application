@@ -147,6 +147,8 @@ const MachineManager: React.FC<MachineManagerProps> = ({ machines }) => {
                     currentType={selectedMachineType}
                     onClearFilter={() => setSelectedMachineType(null)}
                     onViewMachine={(id) => router.push(`/dashboard/machines/${id}`)}
+                    totalCount={filteredMeasurements.length}
+                    globalStartIndex={(currentPage - 1) * itemsPerPage}
                 />
 
                 {/* Pagination Controls */}

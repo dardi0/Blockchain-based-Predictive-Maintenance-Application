@@ -11,7 +11,7 @@ interface MeasurementWithMachine extends SensorData {
 interface MeasurementDetailModalProps {
     measurement: MeasurementWithMachine | null;
     onClose: () => void;
-    onViewMachine: (machineId: number) => void;
+    onViewMachine: (machineId: string) => void;
 }
 
 export const MeasurementDetailModal: React.FC<MeasurementDetailModalProps> = ({ measurement, onClose, onViewMachine }) => {

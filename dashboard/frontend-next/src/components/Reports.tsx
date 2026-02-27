@@ -1,171 +1,25 @@
 'use client';
 
-import React, { useEffect, useState, memo } from 'react';
-import { api } from '../services/api';
-import { useDashboard } from './DashboardShell';
-import { SavedReport, MachineStatus } from '../types';
+import React, { memo } from 'react';
+import { SavedReport } from '../types';
 import { FileText, Calendar, User, ChevronRight, X, Download, Activity, AlertTriangle, CheckCircle, Clock, Code, Plus, Loader2, GitCompare, FileDown } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import dynamic from 'next/dynamic';
 import { ReportCompareModal } from './ReportCompareModal';
+import { useReportsLogic } from './hooks/useReportsLogic';
 
-const COLORS = {
-    operational: '#10b981',
-    warning: '#f59e0b',
-    critical: '#ef4444',
-};
+const ReportCharts = dynamic(
+    () => import('./ReportCharts').then(m => ({ default: m.ReportCharts })),
+    { ssr: false, loading: () => <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="h-56 animate-pulse bg-white/[0.03] rounded-xl" /><div className="h-56 animate-pulse bg-white/[0.03] rounded-xl" /></div> }
+);
 
 function Reports() {
-    const { user, data } = useDashboard();
-    const [reports, setReports] = useState<SavedReport[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [exportingPdf, setExportingPdf] = useState(false);
-    const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
-    const [showRawJson, setShowRawJson] = useState(false);
-    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [selectedForCompare, setSelectedForCompare] = useState<Set<number>>(new Set());
-    const [compareReports, setCompareReports] = useState<[SavedReport, SavedReport] | null>(null);
-
-    const showNotification = (message: string, type: 'success' | 'error') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    const handleGenerateReport = async () => {
-        if (!user) return;
-        setSaving(true);
-        try {
-            const machines = data.machines;
-            const title = `System Snapshot — ${new Date().toLocaleString()}`;
-            const content = {
-                generatedAt: new Date().toISOString(),
-                summary: {
-                    total: machines.length,
-                    critical: machines.filter(m => m.status === MachineStatus.CRITICAL).length,
-                    warning: machines.filter(m => m.status === MachineStatus.WARNING).length,
-                    avgHealth: machines.length > 0
-                        ? Math.round(machines.reduce((acc, m) => acc + m.healthScore, 0) / machines.length)
-                        : 0,
-                },
-                machines,
-            };
-            await api.saveReport(title, content, user.address);
-            showNotification('Report generated and saved successfully.', 'success');
-            await fetchReports();
-        } catch (error) {
-            console.error('Failed to generate report', error);
-            showNotification('Failed to generate report. Please try again.', 'error');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const fetchReports = async () => {
-        if (!user) return;
-        try {
-            const data = await api.getReportsHistory(user.address);
-            setReports(Array.isArray(data) ? data : (data as any).reports || []);
-        } catch (error) {
-            console.error('Failed to fetch reports', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchReports();
-    }, [user]);
-
-    const handleViewReport = async (report: SavedReport) => {
-        if (!user) return;
-        try {
-            if (!report.content) {
-                const fullReport = await api.getReportDetails(report.id, user.address);
-                setSelectedReport(fullReport as SavedReport);
-            } else {
-                setSelectedReport(report);
-            }
-            setShowRawJson(false);
-        } catch (error) {
-            console.error('Failed to open report', error);
-        }
-    };
-
-    const handleDownload = () => {
-        if (!selectedReport) return;
-        const blob = new Blob([JSON.stringify(selectedReport.content, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `report-${selectedReport.id}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    const handleExportPDF = async () => {
-        if (!user) return;
-        setExportingPdf(true);
-        try {
-            const blob = await api.exportReportPDF(7, undefined, user.address);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pdm_report_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showNotification('PDF report downloaded successfully.', 'success');
-        } catch (err) {
-            console.error('PDF export failed:', err);
-            showNotification('Failed to export PDF. Check if reportlab is installed on backend.', 'error');
-        } finally {
-            setExportingPdf(false);
-        }
-    };
-
-    const toggleCompareSelection = (report: SavedReport) => {
-        setSelectedForCompare(prev => {
-            const next = new Set(prev);
-            if (next.has(report.id)) {
-                next.delete(report.id);
-            } else if (next.size < 2) {
-                next.add(report.id);
-            }
-            return next;
-        });
-    };
-
-    const handleCompare = () => {
-        const ids = Array.from(selectedForCompare);
-        if (ids.length !== 2) return;
-        const rA = reports.find(r => r.id === ids[0]);
-        const rB = reports.find(r => r.id === ids[1]);
-        if (rA && rB) setCompareReports([rA, rB]);
-    };
-
-    const getReportData = () => {
-        if (!selectedReport?.content) return null;
-        const content = selectedReport.content;
-
-        const summary = content.summary || {};
-        const machines = content.machines || [];
-
-        const statusData = [
-            { name: 'Operational', value: summary.total - summary.critical - summary.warning || 0, color: COLORS.operational },
-            { name: 'Warning', value: summary.warning || 0, color: COLORS.warning },
-            { name: 'Critical', value: summary.critical || 0, color: COLORS.critical },
-        ].filter(d => d.value > 0);
-
-        const barData = machines.slice(0, 10).map((m: any) => ({
-            name: m.name || `Machine #${m.id}`,
-            health: m.healthScore || 0
-        }));
-
-        return { summary, machines, statusData, barData, generatedAt: content.generatedAt };
-    };
+    const {
+        reports, loading, saving, exportingPdf, selectedReport, showRawJson,
+        notification, selectedForCompare, compareReports,
+        handleGenerateReport, handleViewReport, handleDownload, handleExportPDF,
+        toggleCompareSelection, handleCompare, getReportData,
+        setSelectedReport, setShowRawJson, setCompareReports, setSelectedForCompare,
+    } = useReportsLogic();
 
     if (loading) return <div className="p-8 text-center text-white/30">Loading history...</div>;
 
@@ -260,6 +114,7 @@ function Reports() {
                                                 disabled={!canSelect}
                                                 onChange={() => toggleCompareSelection(report)}
                                                 className="w-4 h-4 accent-emerald-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                                                aria-label="Select report for comparison"
                                                 title="Select for comparison"
                                             />
                                         </td>
@@ -379,72 +234,7 @@ function Reports() {
                                     </div>
 
                                     {/* Charts Row */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {reportData.statusData.length > 0 && (
-                                            <div className="p-5 rounded-xl border border-white/[0.07] bg-white/[0.02]">
-                                                <h4 className="text-[10px] font-bold text-white/30 mb-4 uppercase tracking-widest">Status Distribution</h4>
-                                                <div className="h-48">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <PieChart>
-                                                            <Pie
-                                                                data={reportData.statusData}
-                                                                cx="50%"
-                                                                cy="50%"
-                                                                innerRadius={40}
-                                                                outerRadius={60}
-                                                                paddingAngle={5}
-                                                                dataKey="value"
-                                                                stroke="none"
-                                                            >
-                                                                {reportData.statusData.map((entry: any, index: number) => (
-                                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                                ))}
-                                                            </Pie>
-                                                            <Tooltip
-                                                                contentStyle={{
-                                                                    backgroundColor: 'rgba(10, 16, 32, 0.95)',
-                                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                                    borderRadius: '10px',
-                                                                }}
-                                                                itemStyle={{ color: '#fff', fontSize: '12px' }}
-                                                            />
-                                                        </PieChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                                <div className="flex justify-center gap-4 mt-2">
-                                                    {reportData.statusData.map((d: any) => (
-                                                        <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }}></span>
-                                                            <span className="text-white/40">{d.name} ({d.value})</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {reportData.barData.length > 0 && (
-                                            <div className="p-5 rounded-xl border border-white/[0.07] bg-white/[0.02]">
-                                                <h4 className="text-[10px] font-bold text-white/30 mb-4 uppercase tracking-widest">Machine Health Scores</h4>
-                                                <div className="h-48">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={reportData.barData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                                                            <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={9} tickLine={false} axisLine={false} />
-                                                            <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.2)" fontSize={9} tickLine={false} axisLine={false} />
-                                                            <Tooltip
-                                                                contentStyle={{
-                                                                    backgroundColor: 'rgba(10, 16, 32, 0.95)',
-                                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                                    borderRadius: '10px',
-                                                                }}
-                                                                itemStyle={{ color: '#fff' }}
-                                                            />
-                                                            <Bar dataKey="health" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-                                                        </BarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <ReportCharts statusData={reportData.statusData} barData={reportData.barData} />
 
                                     {/* Machine List */}
                                     {reportData.machines.length > 0 && (
@@ -454,10 +244,10 @@ function Reports() {
                                             </div>
                                             <div className="divide-y divide-white/[0.04] max-h-60 overflow-y-auto">
                                                 {reportData.machines.map((machine: any, index: number) => (
-                                                    <div key={index} className="px-5 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors">
+                                                    <div key={machine.id ?? `machine-${index}`} className="px-5 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors">
                                                         <div className="flex items-center gap-3">
-                                                            <span className={`w-2 h-2 rounded-full ${machine.status === MachineStatus.CRITICAL ? 'bg-red-500' :
-                                                                    machine.status === MachineStatus.WARNING ? 'bg-amber-500' : 'bg-emerald-500'
+                                                            <span className={`w-2 h-2 rounded-full ${machine.status === 'CRITICAL' ? 'bg-red-500' :
+                                                                machine.status === 'WARNING' ? 'bg-amber-500' : 'bg-emerald-500'
                                                                 }`}></span>
                                                             <div>
                                                                 <p className="text-sm font-medium text-white">{machine.name}</p>
@@ -466,7 +256,7 @@ function Reports() {
                                                         </div>
                                                         <div className="text-right">
                                                             <p className={`text-sm font-bold ${machine.healthScore >= 80 ? 'text-emerald-400' :
-                                                                    machine.healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                                                                machine.healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
                                                                 }`}>{machine.healthScore}%</p>
                                                             <p className="text-xs text-white/30">{machine.status}</p>
                                                         </div>

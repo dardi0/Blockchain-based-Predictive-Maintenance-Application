@@ -134,6 +134,7 @@ const BlockchainLedger: React.FC<BlockchainLedgerProps> = ({ records }) => {
                     <input
                         type="text"
                         placeholder="Search by machine ID, action, or transaction hash..."
+                        aria-label="Search transactions"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.07] rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/50 focus:border-[var(--accent-primary)] transition-all"
@@ -265,7 +266,7 @@ const BlockchainLedger: React.FC<BlockchainLedgerProps> = ({ records }) => {
 
                         {getPageNumbers().map((page, idx) => (
                             <button
-                                key={idx}
+                                key={`page-${page}-${String(idx)}`}
                                 onClick={() => typeof page === 'number' && setCurrentPage(page)}
                                 disabled={page === '...'}
                                 className={`min-w-[36px] h-9 rounded-lg font-medium text-sm transition-all ${page === currentPage

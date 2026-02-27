@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { useDashboard } from '@/components/DashboardShell';
 import { Machine, MachineStatus } from '@/types';
@@ -8,10 +9,11 @@ import {
     ArrowLeft, Activity, Brain, Wrench, ThermometerSun,
     Gauge, Timer, Zap, AlertTriangle, CheckCircle
 } from 'lucide-react';
-import {
-    ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
-    CartesianGrid, Tooltip, Cell, ReferenceLine
-} from 'recharts';
+
+const SensorBreakdownChart = dynamic(
+    () => import('@/components/dashboard/SensorBreakdownChart').then(m => ({ default: m.SensorBreakdownChart })),
+    { ssr: false, loading: () => <div className="h-64 animate-pulse bg-white/[0.03] rounded-xl" /> }
+);
 
 export default function MachineDetailsPage() {
     const router = useRouter();
@@ -21,12 +23,15 @@ export default function MachineDetailsPage() {
     const [machine, setMachine] = useState<Machine | null>(null);
 
     useEffect(() => {
-        if (data.machines.length > 0) {
-            const found = data.machines.find(m => m.id === id);
-            if (found) {
-                setMachine(found);
+        const t = setTimeout(() => {
+            if (data.machines.length > 0) {
+                const found = data.machines.find(m => m.id === id);
+                if (found) {
+                    setMachine(found);
+                }
             }
-        }
+        }, 0);
+        return () => clearTimeout(t);
     }, [data.machines, id]);
 
     if (!machine) {
@@ -174,26 +179,7 @@ export default function MachineDetailsPage() {
                         <Activity size={20} className="text-[var(--accent-primary)]" />
                         Component Health Breakdown
                     </h3>
-                    <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={sensorBreakdownData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#94a3b8" opacity={0.1} />
-                                <XAxis type="number" domain={[0, 100]} hide />
-                                <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: '#fff' }}
-                                    formatter={(value: number) => [`${value}%`, 'Health Score']}
-                                />
-                                <ReferenceLine x={100} stroke="#e2e8f0" strokeOpacity={0.5} />
-                                <Bar dataKey="score" radius={[0, 4, 4, 0] as [number, number, number, number]} barSize={24} background={{ fill: '#f1f5f9' }}>
-                                    {sensorBreakdownData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={getScoreColor(entry.score)} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <SensorBreakdownChart data={sensorBreakdownData} getScoreColor={getScoreColor} />
                     <div className="mt-4 grid grid-cols-3 gap-4 text-center text-xs text-slate-500">
                         <div className="flex items-center justify-center gap-2">
                             <span className="w-3 h-3 rounded-full bg-emerald-500"></span> Healthy (80-100%)
@@ -209,8 +195,8 @@ export default function MachineDetailsPage() {
 
                 {/* Latest Sensor Value Cards */}
                 <div className="space-y-4">
-                    {sensorBreakdownData.map((item, idx) => (
-                        <div key={idx} className="bg-white dark:bg-[var(--dark-bg)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    {sensorBreakdownData.map((item) => (
+                        <div key={item.name} className="bg-white dark:bg-[var(--dark-bg)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${item.name === 'Air Temp' || item.name === 'Process Temp' ? 'bg-orange-100 text-orange-600' :
                                     item.name === 'Torque' ? 'bg-[var(--accent-highlight)]/20 text-[var(--accent-primary)]' :

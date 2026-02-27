@@ -147,7 +147,7 @@ export const SkeletonList: React.FC<{ rows?: number }> = ({ rows = 3 }) => {
     return (
         <div className="space-y-3">
             {Array.from({ length: rows }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-[var(--dark-bg)]/50 rounded-xl animate-pulse">
+                <div key={`skeleton-row-${i}`} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-[var(--dark-bg)]/50 rounded-xl animate-pulse">
                     <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
                     <div className="flex-1">
                         <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded mb-2"></div>

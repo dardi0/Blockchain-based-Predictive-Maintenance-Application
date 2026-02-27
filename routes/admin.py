@@ -159,7 +159,7 @@ def update_user_role(address: str, role_data: dict, admin: dict = Depends(requir
 
 # --- Debug Endpoint ---
 @router.get("/debug/fix-owner")
-def debug_fix_owner():
+def debug_fix_owner(admin: dict = Depends(require_role('OWNER'))):
     """Debug: Force reload env and seed owner"""
     from dotenv import load_dotenv
     load_dotenv(override=True)

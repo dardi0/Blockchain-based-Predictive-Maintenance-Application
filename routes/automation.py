@@ -31,6 +31,8 @@ _automation_listener = None
 _automation_listener_task = None
 _automation_enabled = False
 _has_automation_listener = False
+_restart_listener_task = None
+_trigger_manual_prediction = None
 
 
 def set_automation_refs(listener, task, enabled, has_listener):
@@ -45,6 +47,13 @@ def set_automation_refs(listener, task, enabled, has_listener):
 def get_automation_refs():
     """Get automation references."""
     return _automation_listener, _automation_listener_task, _automation_enabled, _has_automation_listener
+
+
+def set_control_functions(restart_listener_task=None, trigger_manual_prediction=None):
+    """Set control functions (called by api_main)."""
+    global _restart_listener_task, _trigger_manual_prediction
+    _restart_listener_task = restart_listener_task
+    _trigger_manual_prediction = trigger_manual_prediction
 
 
 # --- API Key Verification ---
@@ -383,18 +392,29 @@ def get_listener_status():
 
 
 @router.post("/listener-restart")
-async def restart_listener():
+async def restart_listener(_: bool = Depends(verify_automation_key)):
     """Restart the automation event listener."""
-    global _automation_listener, _automation_listener_task
+    if not _restart_listener_task:
+        raise HTTPException(status_code=503, detail="Restart function not available")
+    
+    success = await _restart_listener_task()
+    if success:
+        return {"success": True, "message": "Listener restarted successfully"}
+    else:
+        return {"success": False, "message": "Failed to restart listener"}
 
-    listener, task, enabled, has_listener = get_automation_refs()
 
-    if not has_listener:
-        raise HTTPException(status_code=400, detail="Automation listener module not available")
-
-    # Bu endpoint'in düzgün çalışması için api_main'deki fonksiyonları kullanmak gerekiyor
-    # Şimdilik sadece status döndürelim
-    return {"success": False, "message": "Use api_main restart functions"}
+@router.post("/trigger-prediction")
+async def trigger_prediction(_: bool = Depends(verify_automation_key), x_wallet_address: Optional[str] = Header(None)):
+    """Manually trigger a prediction cycle."""
+    if not _trigger_manual_prediction:
+        raise HTTPException(status_code=503, detail="Manual trigger function not available")
+    
+    result = await _trigger_manual_prediction(x_wallet_address)
+    if result.get("success"):
+        return result
+    else:
+        raise HTTPException(status_code=500, detail=result.get("message", "Trigger failed"))
 
 
 @router.get("/contracts")

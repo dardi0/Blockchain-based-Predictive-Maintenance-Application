@@ -42,8 +42,7 @@ export function ProtectedRoute({
         canAccessPage,
     } = useAccessControl();
 
-    const [accessDenied, setAccessDenied] = useState(false);
-    const [reason, setReason] = useState<string>('');
+    const [accessState, setAccessState] = useState<{ denied: boolean; reason: string }>({ denied: false, reason: '' });
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -55,41 +54,33 @@ export function ProtectedRoute({
     useEffect(() => {
         if (isLoading) return;
 
-        // Check authentication
-        if (!user) {
-            if (redirectToLogin) {
-                router.push('/login');
+        const t = setTimeout(() => {
+            let redirectLogin = false;
+            let deniedInfo = null;
+
+            if (!user) {
+                if (redirectToLogin) {
+                    redirectLogin = true;
+                } else {
+                    deniedInfo = { denied: true, reason: 'Authentication required' };
+                }
+            } else if (!canAccessPage(pathname)) {
+                deniedInfo = { denied: true, reason: 'Bu sayfaya erişim yetkiniz yok.' };
+            } else if (requiredRoles && requiredRoles.length > 0 && !hasAnyRole(...requiredRoles)) {
+                deniedInfo = { denied: true, reason: `Bu sayfa için ${requiredRoles.join(' veya ')} rolü gereklidir.` };
+            } else if (requiredResource && !hasResourceAccess(requiredResource, requiredAccessLevel)) {
+                deniedInfo = { denied: true, reason: `${requiredResource} kaynağına yeterli erişim yetkiniz yok.` };
+            } else {
+                deniedInfo = { denied: false, reason: '' };
             }
-            return;
-        }
 
-        // Check page access
-        if (!canAccessPage(pathname)) {
-            setAccessDenied(true);
-            setReason('Bu sayfaya erişim yetkiniz yok.');
-            return;
-        }
-
-        // Check role requirements
-        if (requiredRoles && requiredRoles.length > 0) {
-            if (!hasAnyRole(...requiredRoles)) {
-                setAccessDenied(true);
-                setReason(`Bu sayfa için ${requiredRoles.join(' veya ')} rolü gereklidir.`);
-                return;
+            if (redirectLogin) {
+                window.location.href = '/login';
+            } else if (deniedInfo) {
+                setAccessState(deniedInfo);
             }
-        }
-
-        // Check resource access
-        if (requiredResource) {
-            if (!hasResourceAccess(requiredResource, requiredAccessLevel)) {
-                setAccessDenied(true);
-                setReason(`${requiredResource} kaynağına yeterli erişim yetkiniz yok.`);
-                return;
-            }
-        }
-
-        setAccessDenied(false);
-        setReason('');
+        }, 0);
+        return () => clearTimeout(t);
     }, [
         user,
         isLoading,
@@ -118,7 +109,7 @@ export function ProtectedRoute({
     }
 
     // Show access denied
-    if (accessDenied) {
+    if (accessState.denied) {
         if (fallback) {
             return <>{fallback}</>;
         }
@@ -134,7 +125,7 @@ export function ProtectedRoute({
                             Erişim Engellendi
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400">
-                            {reason || 'Bu sayfaya erişim yetkiniz bulunmuyor.'}
+                            {accessState.reason || 'Bu sayfaya erişim yetkiniz bulunmuyor.'}
                         </p>
                         <div className="flex gap-3 mt-4">
                             <button

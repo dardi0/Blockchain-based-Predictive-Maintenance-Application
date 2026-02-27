@@ -304,8 +304,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             {/* Overlay for mobile */}
             {mobileMenuOpen && (
                 <div
+                    role="presentation"
+                    aria-hidden="true"
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
                     onClick={() => setMobileMenuOpen(false)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setMobileMenuOpen(false); }}
                 />
             )}
         </div>

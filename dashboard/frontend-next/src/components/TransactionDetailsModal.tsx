@@ -43,26 +43,230 @@ interface TransactionDetails {
     explorerUrl: string;
 }
 
+interface OverviewTabProps {
+    details: TransactionDetails;
+    copyToClipboard: (text: string) => void;
+    formatAddress: (addr: string) => string;
+    gasPercent: (gasUsed: number, gasLimit: number) => string;
+    formatEth: (val?: string | number) => string;
+    formatTimestamp: (iso?: string, unix?: number) => string;
+}
+
+function OverviewTab({ details, copyToClipboard, formatAddress, gasPercent, formatEth, formatTimestamp }: OverviewTabProps) {
+    return (
+        <div className={styles.overview}>
+            <div className={styles.statusRow}>
+                <span className={`${styles.statusBadge} ${styles[details.status.toLowerCase()]}`}>
+                    {details.status}
+                </span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Transaction Hash</span>
+                <div className={styles.valueWithCopy}>
+                    <code>{details.txHash}</code>
+                    <button onClick={() => copyToClipboard(details.txHash)}>📋</button>
+                </div>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Block</span>
+                <span>{details.blockNumber != null ? `#${details.blockNumber}` : '-'}</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Timestamp</span>
+                <span>{formatTimestamp(details.timestampISO || details.receivedAt, details.timestamp)}</span>
+            </div>
+
+            <hr className={styles.divider} />
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>From</span>
+                <div className={styles.valueWithCopy}>
+                    <code>{details.from}</code>
+                    <button onClick={() => copyToClipboard(details.from)}>📋</button>
+                </div>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>To (Contract)</span>
+                <div className={styles.valueWithCopy}>
+                    <code>{details.to}</code>
+                    <button onClick={() => copyToClipboard(details.to)}>📋</button>
+                </div>
+            </div>
+
+            <hr className={styles.divider} />
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Value</span>
+                <span>{formatEth(details.value)} ETH</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Transaction Fee</span>
+                <span>{formatEth(details.fee)} ETH</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Gas Limit</span>
+                <span>{details.gasLimit != null ? details.gasLimit : '-'}</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Gas Used</span>
+                <span>
+                    {details.gasUsed != null ? details.gasUsed : '-'}
+                    {details.gasLimit ? ` (${gasPercent(details.gasUsed, details.gasLimit)})` : ''}
+                </span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Gas Price</span>
+                <span>{formatEth(details.gasPrice)} ETH</span>
+            </div>
+
+            <hr className={styles.divider} />
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Nonce</span>
+                <span>{details.nonce}</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Transaction Type</span>
+                <span>
+                    {details.type === 2 ? 'EIP-1559' : details.type === 0 ? 'Legacy' : `Type ${details.type}`}
+                </span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Chain ID</span>
+                <span>zkSync Sepolia ({details.chainId})</span>
+            </div>
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>L1 Originated</span>
+                <span>{details.isL1Originated ? 'Yes' : 'No'}</span>
+            </div>
+
+            {details.l1BatchNumber && (
+                <div className={styles.row}>
+                    <span className={styles.fieldLabel}>L1 Batch Number</span>
+                    <span>{details.l1BatchNumber}</span>
+                </div>
+            )}
+
+            {details.l1CommitTxHash && (
+                <div className={styles.row}>
+                    <span className={styles.fieldLabel}>L1 Commit TX</span>
+                    <code>{formatAddress(details.l1CommitTxHash)}</code>
+                </div>
+            )}
+
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Explorer</span>
+                <a href={details.explorerUrl} target="_blank" rel="noopener noreferrer">
+                    View on zkSync Explorer ↗
+                </a>
+            </div>
+        </div>
+    );
+}
+
+interface LogsTabProps {
+    events: TransactionDetails['events'];
+    formatAddress: (addr: string) => string;
+}
+
+function LogsTab({ events, formatAddress }: LogsTabProps) {
+    return (
+        <div className={styles.logs}>
+            {(!events || events.length === 0) ? (
+                <p className={styles.noData}>No events emitted</p>
+            ) : (
+                events.map((event, idx) => (
+                    <div key={`event-${event.logIndex ?? idx}`} className={styles.logEntry}>
+                        <div className={styles.logHeader}>
+                            <span className={styles.logIndex}>#{event.logIndex}</span>
+                            <code className={styles.logAddress}>{formatAddress(event.address)}</code>
+                        </div>
+                        <div className={styles.logTopics}>
+                            <span className={styles.fieldLabel}>Topics:</span>
+                            {event.topics.map((topic: string, i: number) => (
+                                <code key={topic} className={styles.topic}>[{i}] {topic}</code>
+                            ))}
+                        </div>
+                        {event.data && event.data !== '0x' && (
+                            <div className={styles.logData}>
+                                <span className={styles.fieldLabel}>Data:</span>
+                                <code>{event.data}</code>
+                            </div>
+                        )}
+                    </div>
+                ))
+            )}
+        </div>
+    );
+}
+
+interface RawDataTabProps {
+    inputData: string;
+    inputDataLength: number;
+    copyToClipboard: (text: string) => void;
+}
+
+function RawDataTab({ inputData, inputDataLength, copyToClipboard }: RawDataTabProps) {
+    return (
+        <div className={styles.rawData}>
+            <div className={styles.row}>
+                <span className={styles.fieldLabel}>Input Data Length</span>
+                <span>{inputDataLength} bytes</span>
+            </div>
+            <div className={styles.inputDataBox}>
+                <code>{inputData}</code>
+            </div>
+            <button
+                className={styles.copyBtn}
+                onClick={() => copyToClipboard(inputData)}
+            >
+                Copy Input Data
+            </button>
+        </div>
+    );
+}
+
 export default function TransactionDetailsModal({ txHash, onClose }: TransactionDetailsModalProps) {
-    const [details, setDetails] = useState<TransactionDetails | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'raw'>('overview');
+    const [state, setState] = useState({
+        details: null as TransactionDetails | null,
+        loading: true,
+        error: null as string | null,
+        activeTab: 'overview' as 'overview' | 'logs' | 'raw'
+    });
 
     useEffect(() => {
         const fetchDetails = async () => {
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            let data: any = null;
+            let errString: string | null = null;
             try {
-                setLoading(true);
-                const data = await api.getTransactionDetails(txHash);
-                setDetails(data as unknown as TransactionDetails);
+                data = await api.getTransactionDetails(txHash);
             } catch (err: any) {
-                setError(err.message || 'Failed to fetch transaction details');
-            } finally {
-                setLoading(false);
+                console.error("Failed to fetch transaction details:", err);
+                errString = err.message || "Failed to load details";
             }
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: errString ? errString : prev.error,
+                details: data && !errString ? data as unknown as TransactionDetails : prev.details
+            }));
         };
         fetchDetails();
     }, [txHash]);
+
+    const { activeTab, details, loading, error } = state;
 
     const formatAddress = (addr: string) => {
         if (!addr) return '-';
@@ -70,13 +274,38 @@ export default function TransactionDetailsModal({ txHash, onClose }: Transaction
     };
 
     const copyToClipboard = (text: string) => {
+        if (!text) return;
         navigator.clipboard.writeText(text);
+    };
+
+    const formatTimestamp = (iso?: string, unix?: number): string => {
+        try {
+            let d: Date | null = null;
+            if (iso) { d = new Date(iso); } else if (unix) { d = new Date(unix * 1000); }
+            if (d === null) return '-';
+            if (isNaN(d.getTime())) return '-';
+            return d.toLocaleString('tr-TR', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        } catch { return '-'; }
+    };
+
+    const gasPercent = (gasUsed: number, gasLimit: number): string => {
+        if (!gasLimit || !gasUsed || isNaN(gasUsed / gasLimit)) return '-';
+        return `${((gasUsed / gasLimit) * 100).toFixed(1)}%`;
+    };
+
+    const formatEth = (val?: string | number): string => {
+        if (val === undefined || val === null || val === '') return '0';
+        const n = parseFloat(String(val));
+        return isNaN(n) ? String(val) : n.toFixed(6);
     };
 
     if (loading) {
         return (
-            <div className={styles.overlay} onClick={onClose}>
-                <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div role="presentation" className={styles.overlay} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+                <div role="dialog" aria-modal="true" aria-label="Transaction Details" className={styles.modal} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                     <div className={styles.loading}>
                         <div className={styles.spinner}></div>
                         <p>Loading transaction details...</p>
@@ -88,8 +317,8 @@ export default function TransactionDetailsModal({ txHash, onClose }: Transaction
 
     if (error || !details) {
         return (
-            <div className={styles.overlay} onClick={onClose}>
-                <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div role="presentation" className={styles.overlay} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+                <div role="dialog" aria-modal="true" aria-label="Transaction Details" className={styles.modal} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                     <div className={styles.error}>
                         <p>❌ {error || 'Transaction not found'}</p>
                         <button onClick={onClose}>Close</button>
@@ -100,8 +329,8 @@ export default function TransactionDetailsModal({ txHash, onClose }: Transaction
     }
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div role="presentation" className={styles.overlay} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+            <div role="dialog" aria-modal="true" aria-label="Transaction Details" className={styles.modal} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                 <div className={styles.header}>
                     <h2>Transaction Details</h2>
                     <button className={styles.closeBtn} onClick={onClose}>×</button>
@@ -110,19 +339,19 @@ export default function TransactionDetailsModal({ txHash, onClose }: Transaction
                 <div className={styles.tabs}>
                     <button
                         className={activeTab === 'overview' ? styles.activeTab : ''}
-                        onClick={() => setActiveTab('overview')}
+                        onClick={() => setState(prev => ({ ...prev, activeTab: 'overview' }))}
                     >
                         Overview
                     </button>
                     <button
                         className={activeTab === 'logs' ? styles.activeTab : ''}
-                        onClick={() => setActiveTab('logs')}
+                        onClick={() => setState(prev => ({ ...prev, activeTab: 'logs' }))}
                     >
                         Logs ({details.eventsCount})
                     </button>
                     <button
                         className={activeTab === 'raw' ? styles.activeTab : ''}
-                        onClick={() => setActiveTab('raw')}
+                        onClick={() => setState(prev => ({ ...prev, activeTab: 'raw' }))}
                     >
                         Input Data
                     </button>
@@ -130,175 +359,24 @@ export default function TransactionDetailsModal({ txHash, onClose }: Transaction
 
                 <div className={styles.content}>
                     {activeTab === 'overview' && (
-                        <div className={styles.overview}>
-                            {/* Status */}
-                            <div className={styles.statusRow}>
-                                <span className={`${styles.statusBadge} ${styles[details.status.toLowerCase()]}`}>
-                                    {details.status}
-                                </span>
-                            </div>
-
-                            {/* Transaction Hash */}
-                            <div className={styles.row}>
-                                <label>Transaction Hash</label>
-                                <div className={styles.valueWithCopy}>
-                                    <code>{details.txHash}</code>
-                                    <button onClick={() => copyToClipboard(details.txHash)}>📋</button>
-                                </div>
-                            </div>
-
-                            {/* Block */}
-                            <div className={styles.row}>
-                                <label>Block</label>
-                                <span>{details.blockNumber?.toLocaleString()}</span>
-                            </div>
-
-                            {/* Timestamp */}
-                            <div className={styles.row}>
-                                <label>Timestamp</label>
-                                <span>{details.timestampISO || details.receivedAt || '-'}</span>
-                            </div>
-
-                            <hr className={styles.divider} />
-
-                            {/* From / To */}
-                            <div className={styles.row}>
-                                <label>From</label>
-                                <div className={styles.valueWithCopy}>
-                                    <code>{details.from}</code>
-                                    <button onClick={() => copyToClipboard(details.from)}>📋</button>
-                                </div>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>To (Contract)</label>
-                                <div className={styles.valueWithCopy}>
-                                    <code>{details.to}</code>
-                                    <button onClick={() => copyToClipboard(details.to)}>📋</button>
-                                </div>
-                            </div>
-
-                            <hr className={styles.divider} />
-
-                            {/* Value & Gas */}
-                            <div className={styles.row}>
-                                <label>Value</label>
-                                <span>{details.value} ETH</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Transaction Fee</label>
-                                <span>{details.fee} ETH</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Gas Limit</label>
-                                <span>{details.gasLimit?.toLocaleString()}</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Gas Used</label>
-                                <span>{details.gasUsed?.toLocaleString()} ({((details.gasUsed / details.gasLimit) * 100).toFixed(1)}%)</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Gas Price</label>
-                                <span>{details.gasPrice} ETH</span>
-                            </div>
-
-                            <hr className={styles.divider} />
-
-                            {/* zkSync Specific */}
-                            <div className={styles.row}>
-                                <label>Nonce</label>
-                                <span>{details.nonce}</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Transaction Type</label>
-                                <span>EIP-1559 (Type {details.type})</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>Chain ID</label>
-                                <span>zkSync Sepolia ({details.chainId})</span>
-                            </div>
-
-                            <div className={styles.row}>
-                                <label>L1 Originated</label>
-                                <span>{details.isL1Originated ? 'Yes' : 'No'}</span>
-                            </div>
-
-                            {details.l1BatchNumber && (
-                                <div className={styles.row}>
-                                    <label>L1 Batch Number</label>
-                                    <span>{details.l1BatchNumber}</span>
-                                </div>
-                            )}
-
-                            {/* L1 TX Hashes */}
-                            {details.l1CommitTxHash && (
-                                <div className={styles.row}>
-                                    <label>L1 Commit TX</label>
-                                    <code>{formatAddress(details.l1CommitTxHash)}</code>
-                                </div>
-                            )}
-
-                            {/* Explorer Link */}
-                            <div className={styles.row}>
-                                <label>Explorer</label>
-                                <a href={details.explorerUrl} target="_blank" rel="noopener noreferrer">
-                                    View on zkSync Explorer ↗
-                                </a>
-                            </div>
-                        </div>
+                        <OverviewTab
+                            details={details}
+                            copyToClipboard={copyToClipboard}
+                            formatAddress={formatAddress}
+                            gasPercent={gasPercent}
+                            formatEth={formatEth}
+                            formatTimestamp={formatTimestamp}
+                        />
                     )}
-
                     {activeTab === 'logs' && (
-                        <div className={styles.logs}>
-                            {details.events.length === 0 ? (
-                                <p className={styles.noData}>No events emitted</p>
-                            ) : (
-                                details.events.map((event, idx) => (
-                                    <div key={idx} className={styles.logEntry}>
-                                        <div className={styles.logHeader}>
-                                            <span className={styles.logIndex}>#{event.logIndex}</span>
-                                            <code className={styles.logAddress}>{formatAddress(event.address)}</code>
-                                        </div>
-                                        <div className={styles.logTopics}>
-                                            <label>Topics:</label>
-                                            {event.topics.map((topic: string, i: number) => (
-                                                <code key={i} className={styles.topic}>[{i}] {topic}</code>
-                                            ))}
-                                        </div>
-                                        {event.data && event.data !== '0x' && (
-                                            <div className={styles.logData}>
-                                                <label>Data:</label>
-                                                <code>{event.data}</code>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                        <LogsTab events={details.events} formatAddress={formatAddress} />
                     )}
-
                     {activeTab === 'raw' && (
-                        <div className={styles.rawData}>
-                            <div className={styles.row}>
-                                <label>Input Data Length</label>
-                                <span>{details.inputDataLength} bytes</span>
-                            </div>
-                            <div className={styles.inputDataBox}>
-                                <code>{details.inputData}</code>
-                            </div>
-                            <button
-                                className={styles.copyBtn}
-                                onClick={() => copyToClipboard(details.inputData)}
-                            >
-                                Copy Input Data
-                            </button>
-                        </div>
+                        <RawDataTab
+                            inputData={details.inputData}
+                            inputDataLength={details.inputDataLength}
+                            copyToClipboard={copyToClipboard}
+                        />
                     )}
                 </div>
             </div>

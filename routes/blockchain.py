@@ -155,17 +155,58 @@ def get_transaction_details(tx_hash: str):
         else:
             final_status = "Pending"
 
+        gas_used  = hex_to_int(tx_receipt.get("gasUsed")) if tx_receipt else None
+        gas_limit = hex_to_int(tx_data.get("gas"))
+
+        # Effective gas price (receipt > tx fallback)
+        raw_gas_price = (
+            tx_receipt.get("effectiveGasPrice") or tx_data.get("maxFeePerGas") or tx_data.get("gasPrice")
+        )
+        gas_price_eth = hex_to_eth(raw_gas_price)
+
+        # Transaction fee = gasUsed * effectiveGasPrice
+        fee_eth = "0"
+        if gas_used and raw_gas_price:
+            fee_wei = gas_used * hex_to_int(raw_gas_price)
+            fee_eth = f"{fee_wei / 1e18:.8f}"
+
+        # Timestamp from zkSync details
+        received_at = zk_details.get("receivedAt") if zk_details else None
+        ts_iso = received_at  # ISO string already
+
+        # Events / logs
+        logs = tx_receipt.get("logs", []) if tx_receipt else []
+        events_count = len(logs)
+
         return {
-            "txHash": tx_hash,
-            "status": final_status,
-            "blockNumber": hex_to_int(tx_data.get("blockNumber")),
-            "from": tx_data.get("from"),
-            "to": tx_data.get("to"),
-            "value": hex_to_eth(tx_data.get("value")),
-            "gasUsed": hex_to_int(tx_receipt.get("gasUsed")) if tx_receipt else None,
-            "inputData": tx_data.get("input"),
-            "decodedInput": decode_input_data(tx_data.get("input")),
-            "explorerUrl": f"https://sepolia.explorer.zksync.io/tx/{tx_hash}"
+            "txHash":            tx_hash,
+            "status":            final_status,
+            "blockNumber":       hex_to_int(tx_data.get("blockNumber")),
+            "blockHash":         tx_data.get("blockHash"),
+            "timestampISO":      ts_iso,
+            "receivedAt":        received_at,
+            "from":              tx_data.get("from"),
+            "to":                tx_data.get("to"),
+            "value":             hex_to_eth(tx_data.get("value")),
+            "gasLimit":          gas_limit,
+            "gasUsed":           gas_used,
+            "gasPrice":          gas_price_eth,
+            "effectiveGasPrice": gas_price_eth,
+            "fee":               fee_eth,
+            "nonce":             hex_to_int(tx_data.get("nonce")),
+            "transactionIndex":  hex_to_int(tx_data.get("transactionIndex")),
+            "type":              hex_to_int(tx_data.get("type")),
+            "chainId":           hex_to_int(tx_data.get("chainId")),
+            "inputData":         tx_data.get("input", "0x"),
+            "inputDataLength":   len(tx_data.get("input", "0x")) // 2,
+            "isL1Originated":    zk_details.get("isL1Originated", False) if zk_details else False,
+            "l1BatchNumber":     zk_details.get("l1BatchNumber") if zk_details else None,
+            "l1CommitTxHash":    zk_details.get("l1CommitTxHash") if zk_details else None,
+            "l1ProveTxHash":     zk_details.get("l1ProveTxHash") if zk_details else None,
+            "l1ExecuteTxHash":   zk_details.get("l1ExecuteTxHash") if zk_details else None,
+            "events":            logs,
+            "eventsCount":       events_count,
+            "explorerUrl":       f"https://sepolia.explorer.zksync.io/tx/{tx_hash}",
         }
 
     except HTTPException:

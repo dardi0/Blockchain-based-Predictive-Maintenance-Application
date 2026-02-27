@@ -60,103 +60,132 @@ const NotificationToast = ({ id, message, type, onClose }: { id: number, message
     </div>
 );
 
+const normalizeMachineData = (resp: any): any[] => {
+    if (Array.isArray(resp)) return resp;
+    if (resp?.machines && Array.isArray(resp.machines)) return resp.machines;
+    return [];
+};
+
+const normalizeSensorHistory = (resp: any): any[] => {
+    if (Array.isArray(resp)) return resp;
+    if (resp?.data && Array.isArray(resp.data)) return resp.data;
+    return [];
+};
+
+const mapRawToSensorData = (h: any): SensorData => ({
+    id: h.id,
+    recordId: h.id,
+    timestamp: h.created_at || new Date(h.timestamp * 1000).toISOString(),
+    airTemperature: h.air_temp,
+    processTemperature: h.process_temp,
+    rotationalSpeed: h.rotation_speed,
+    torque: h.torque,
+    toolWear: h.tool_wear,
+    prediction: h.prediction,
+    prediction_probability: h.prediction_probability,
+    blockchain_tx_hash: h.blockchain_tx_hash,
+    blockchain_success: h.blockchain_success,
+    proof_id: h.proof_id
+});
+
+const getNormalizedSensorData = (history: any[]): SensorData[] => {
+    const mappedData = history.map(mapRawToSensorData).reverse();
+    if (mappedData.length > 0) return mappedData;
+
+    return [{
+        recordId: 0,
+        timestamp: new Date().toISOString(),
+        airTemperature: 300,
+        processTemperature: 310,
+        rotationalSpeed: 1500,
+        torque: 40,
+        toolWear: 0
+    } as SensorData];
+};
+
+const assembleMachineObject = (ra: any, history: any[]): Machine => {
+    const sensorData = getNormalizedSensorData(history);
+    const last = history[0];
+    let mlHealthScore = 98;
+    let engHealthScore = 98;
+    let sensorBreakdown = undefined;
+    let status = MachineStatus.OPERATIONAL;
+
+    if (last) {
+        const sensorValues: SensorValues = {
+            airTemperature: last.air_temp || 300,
+            processTemperature: last.process_temp || 310,
+            rotationalSpeed: last.rotation_speed || 1500,
+            torque: last.torque || 40,
+            toolWear: last.tool_wear || 0
+        };
+
+        const scores = calculateHealthScores(sensorValues, last.prediction_probability);
+        mlHealthScore = scores.mlScore;
+        engHealthScore = scores.engScore;
+        sensorBreakdown = scores.sensorBreakdown;
+
+        const statusStr = getMachineStatus(mlHealthScore, engHealthScore);
+        status = MachineStatus[statusStr as keyof typeof MachineStatus];
+    }
+
+    const avgHealthScore = Math.round((mlHealthScore + engHealthScore) / 2);
+
+    return {
+        id: String(ra.id),
+        name: ra.name || `Machine ${ra.type} (ID: ${ra.id})`,
+        type: ra.type,
+        location: 'Factory Floor',
+        status: status,
+        installDate: ra.first_seen ? new Date(ra.first_seen * 1000).toISOString().split('T')[0] : '2023-01-01',
+        healthScore: avgHealthScore,
+        mlHealthScore: mlHealthScore,
+        engHealthScore: engHealthScore,
+        lastServiceDate: '2023-12-01',
+        sensorData: sensorData,
+        sensorBreakdown: sensorBreakdown
+    };
+};
+
 function DashboardContent({ children }: { children: React.ReactNode }) {
-    const [data, setData] = useState<{ machines: Machine[], records: MaintenanceRecord[] }>({ machines: [], records: [] });
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [toasts, setToasts] = useState<any[]>([]);
+    const [state, dispatch] = React.useReducer((prev: any, next: any) => {
+        if (typeof next === 'function') {
+            return { ...prev, ...next(prev) };
+        }
+        return { ...prev, ...next };
+    }, {
+        data: { machines: [], records: [] },
+        user: null as User | null,
+        loading: true,
+        notifications: [] as any[],
+        toasts: [] as any[]
+    });
+    const { data, user, loading, notifications, toasts } = state;
     const seenIds = React.useRef<Set<number>>(new Set());
     const isFirstLoad = React.useRef(true);
     const router = useRouter();
 
-    let refreshInterval = 5000;
-    try {
-        const { settings } = useSettings();
-        refreshInterval = settings.display.refreshInterval * 1000;
-    } catch {
-        // Settings not yet available
-    }
+    const { settings } = useSettings();
+    const refreshInterval = settings?.display?.refreshInterval ? settings.display.refreshInterval * 1000 : 5000;
 
     const fetchData = async () => {
         if (!user) return;
         try {
-            const machinesResp = await api.getMachines(user.address);
-            const rawMachines = Array.isArray(machinesResp) ? machinesResp : (machinesResp as any).machines || [];
+            let machinesResp: any;
+            try {
+                machinesResp = await api.getMachines(user.address);
+            } catch (err) {
+                console.error("Failed to fetch data", err);
+                return;
+            }
+
+            const rawMachines = normalizeMachineData(machinesResp);
 
             const machinesWithSensorData = await Promise.all(rawMachines.map(async (ra: any) => {
                 try {
                     const historyResp = await api.getSensorHistory(ra.id);
-                    const history = Array.isArray(historyResp) ? historyResp : (historyResp as any).data || [];
-
-                    let sensorData: SensorData[] = history.map((h: any) => ({
-                        id: h.id,
-                        recordId: h.id,
-                        timestamp: h.created_at || new Date(h.timestamp * 1000).toISOString(),
-                        airTemperature: h.air_temp,
-                        processTemperature: h.process_temp,
-                        rotationalSpeed: h.rotation_speed,
-                        torque: h.torque,
-                        toolWear: h.tool_wear,
-                        prediction: h.prediction,
-                        prediction_probability: h.prediction_probability,
-                        blockchain_tx_hash: h.blockchain_tx_hash,
-                        blockchain_success: h.blockchain_success,
-                        proof_id: h.proof_id
-                    })).reverse();
-
-                    if (sensorData.length === 0) {
-                        sensorData = [{
-                            recordId: 0,
-                            timestamp: new Date().toISOString(),
-                            airTemperature: 300,
-                            processTemperature: 310,
-                            rotationalSpeed: 1500,
-                            torque: 40,
-                            toolWear: 0
-                        }];
-                    }
-
-                    const last = history[0];
-                    let status = MachineStatus.OPERATIONAL;
-                    let mlHealthScore = 98;
-                    let engHealthScore = 98;
-                    let sensorBreakdown = undefined;
-
-                    if (last) {
-                        const sensorValues: SensorValues = {
-                            airTemperature: last.air_temp || 300,
-                            processTemperature: last.process_temp || 310,
-                            rotationalSpeed: last.rotation_speed || 1500,
-                            torque: last.torque || 40,
-                            toolWear: last.tool_wear || 0
-                        };
-
-                        const scores = calculateHealthScores(sensorValues, last.prediction_probability);
-                        mlHealthScore = scores.mlScore;
-                        engHealthScore = scores.engScore;
-                        sensorBreakdown = scores.sensorBreakdown;
-
-                        const statusStr = getMachineStatus(mlHealthScore, engHealthScore);
-                        status = MachineStatus[statusStr as keyof typeof MachineStatus];
-                    }
-
-                    const avgHealthScore = Math.round((mlHealthScore + engHealthScore) / 2);
-
-                    return {
-                        id: String(ra.id),
-                        name: ra.name || `Machine ${ra.type} (ID: ${ra.id})`,
-                        type: ra.type,
-                        location: 'Factory Floor',
-                        status: status,
-                        installDate: ra.first_seen ? new Date(ra.first_seen * 1000).toISOString().split('T')[0] : '2023-01-01',
-                        healthScore: avgHealthScore,
-                        mlHealthScore: mlHealthScore,
-                        engHealthScore: engHealthScore,
-                        lastServiceDate: '2023-12-01',
-                        sensorData: sensorData,
-                        sensorBreakdown: sensorBreakdown
-                    };
+                    const history = normalizeSensorHistory(historyResp);
+                    return assembleMachineObject(ra, history);
                 } catch (e) {
                     console.error(`Failed to fetch history for ${ra.id}`, e);
                     return null;
@@ -166,11 +195,20 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             const validMachines = machinesWithSensorData.filter(a => a !== null) as Machine[];
 
             const ledgerResp = await api.getBlockchainLedger();
-            const ledgerRecords = Array.isArray(ledgerResp) ? ledgerResp : (ledgerResp as any).records || [];
+            let ledgerRecords: any[];
+            if (Array.isArray(ledgerResp)) {
+                ledgerRecords = ledgerResp;
+            } else if ((ledgerResp as any).records) {
+                ledgerRecords = (ledgerResp as any).records;
+            } else {
+                ledgerRecords = [];
+            }
 
-            setData({
-                machines: validMachines,
-                records: ledgerRecords
+            dispatch({
+                data: {
+                    machines: validMachines,
+                    records: ledgerRecords
+                }
             });
 
         } catch (err) {
@@ -182,28 +220,32 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         if (!user) return;
         try {
             const notifs = await api.getNotifications(user.address, 50);
-            if (notifs && notifs.length > 0) {
-                setNotifications(notifs);
+            if (notifs) {
+                if (notifs.length > 0) {
+                    dispatch({ notifications: notifs });
 
-                if (isFirstLoad.current) {
-                    notifs.forEach((n: any) => seenIds.current.add(n.id));
-                    isFirstLoad.current = false;
-                } else {
-                    const newUnread = notifs.filter((n: any) => !n.is_read && !seenIds.current.has(n.id));
+                    if (isFirstLoad.current) {
+                        notifs.forEach((n: any) => seenIds.current.add(n.id));
+                        isFirstLoad.current = false;
+                    } else {
+                        const newUnread = notifs.filter((n: any) => !n.is_read && !seenIds.current.has(n.id));
 
-                    if (newUnread.length > 0) {
-                        newUnread.forEach((n: any) => seenIds.current.add(n.id));
-                        setToasts(prev => [...prev, ...newUnread]);
+                        if (newUnread.length > 0) {
+                            newUnread.forEach((n: any) => seenIds.current.add(n.id));
+                            dispatch((prev: any) => ({ toasts: [...prev.toasts, ...newUnread] }));
 
-                        newUnread.forEach((n: any) => {
-                            setTimeout(() => {
-                                setToasts(prev => prev.filter(t => t.id !== n.id));
-                            }, 5000);
-                        });
+                            newUnread.forEach((n: any) => {
+                                setTimeout(() => {
+                                    dispatch((prev: any) => ({ toasts: prev.toasts.filter((t: any) => t.id !== n.id) }));
+                                }, 5000);
+                            });
+                        }
                     }
+                } else {
+                    dispatch({ notifications: [] });
                 }
             } else {
-                setNotifications([]);
+                dispatch({ notifications: [] });
             }
         } catch (e) {
             console.error("Notif fetch error", e);
@@ -211,7 +253,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     };
 
     const handleToastClose = (id: number) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
+        dispatch((prev: any) => ({ toasts: prev.toasts.filter((t: any) => t.id !== id) }));
     };
 
     useEffect(() => {
@@ -219,36 +261,38 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         if (stored) {
             try {
                 const parsed: User = JSON.parse(stored);
-                setUser(parsed);
+                dispatch({ user: parsed });
             } catch {
                 sessionStorage.removeItem(SESSION_USER_KEY);
-                router.push('/login');
+                window.location.replace('/login');
+                return;
             }
         } else {
-            router.push('/login');
+            window.location.replace('/login');
+            return;
         }
-        setLoading(false);
-    }, [router]);
+        dispatch({ loading: false });
+    }, []);
 
     useEffect(() => {
-        if (user) {
-            fetchData();
-            fetchNotifications();
+        if (!user) return;
 
-            const dataInterval = setInterval(fetchData, refreshInterval);
-            const notifInterval = setInterval(fetchNotifications, 10000);
+        fetchData();
+        fetchNotifications();
 
-            return () => {
-                clearInterval(dataInterval);
-                clearInterval(notifInterval);
-            };
-        }
+        const dataInterval = setInterval(fetchData, refreshInterval);
+        const notifInterval = setInterval(fetchNotifications, 10000);
+
+        return () => {
+            clearInterval(dataInterval);
+            clearInterval(notifInterval);
+        };
     }, [user, refreshInterval]);
 
     const handleLogout = useCallback(() => {
-        setUser(null);
+        dispatch({ user: null });
         sessionStorage.removeItem(SESSION_USER_KEY);
-        api.logout().catch(() => {});
+        api.logout().catch(() => { });
         router.push('/login');
     }, [router]);
 
@@ -298,7 +342,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
                 {/* Notification Container (Toasts) */}
                 <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-                    {toasts.map((n) => (
+                    {toasts.map((n: any) => (
                         <div key={n.id} className="pointer-events-auto">
                             <NotificationToast
                                 id={n.id}

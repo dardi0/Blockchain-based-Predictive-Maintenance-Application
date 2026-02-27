@@ -102,20 +102,12 @@ class EnvValidator:
 
     def _is_exposed_key(self, key: str) -> bool:
         """
-        Check if a private key might be a known test key or exposed.
-        This is a basic check - in production, use more sophisticated detection.
+        Check if a private key looks invalid (too short or all zeros).
         """
-        # Known test keys (truncated for safety)
-        test_key_prefixes = [
-            "e243ca6916eaa",  # From default .env
-            "e937fa5f8e9ae",
-            "1b6db8c0c1f05",
-            "0a92778e8d9bd",
-        ]
-
-        for prefix in test_key_prefixes:
-            if key.lower().startswith(prefix):
-                return True
+        if not key or len(key.replace('0x', '')) < 64:
+            return True
+        if key.replace('0x', '').replace('0', '') == '':
+            return True
         return False
 
     def print_report(self):

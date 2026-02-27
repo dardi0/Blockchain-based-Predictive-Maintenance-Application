@@ -1,20 +1,21 @@
 'use client';
 
-import LoginScreen from '@/components/LoginScreen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import LoginScreen from '@/components/LoginScreen';
 import { User } from '@/types';
 
 export default function LoginPage() {
     const router = useRouter();
+    const [initialMode] = useState<'LOGIN' | 'REGISTER' | null>(() => {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get('mode') as 'LOGIN' | 'REGISTER' | null;
+    });
 
-    // Clear session on login page load to prevent loops
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('pdmSessionUser');
-            sessionStorage.removeItem('pdm_auth_token');
-            sessionStorage.removeItem('pdm_token_expiry');
-        }
+        sessionStorage.removeItem('pdmSessionUser');
+        sessionStorage.removeItem('pdm_auth_token');
+        sessionStorage.removeItem('pdm_token_expiry');
     }, []);
 
     const handleLogin = (user: User) => {
@@ -22,5 +23,5 @@ export default function LoginPage() {
         router.push('/dashboard');
     };
 
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen onLogin={handleLogin} initialMode={initialMode} />;
 }

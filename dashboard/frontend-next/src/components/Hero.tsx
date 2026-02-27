@@ -36,13 +36,16 @@ const IsometricCubes: React.FC = () => (
    Live signal bar
    ─────────────────────────────────────────────────────── */
 const SignalBar: React.FC = () => {
-    const [values, setValues] = useState([72, 45, 88, 34, 91, 56, 67]);
+    const [values, setValues] = useState([
+        { id: 'b0', v: 72 }, { id: 'b1', v: 45 }, { id: 'b2', v: 88 },
+        { id: 'b3', v: 34 }, { id: 'b4', v: 91 }, { id: 'b5', v: 56 }, { id: 'b6', v: 67 }
+    ]);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setValues(prev => prev.map(v => {
+            setValues(prev => prev.map(item => {
                 const delta = (Math.random() - 0.5) * 8;
-                return Math.max(10, Math.min(95, v + delta));
+                return { ...item, v: Math.max(10, Math.min(95, item.v + delta)) };
             }));
         }, 1500);
         return () => clearInterval(interval);
@@ -50,9 +53,9 @@ const SignalBar: React.FC = () => {
 
     return (
         <div className="flex items-end gap-[3px] h-8">
-            {values.map((v, i) => (
+            {values.map(({ id, v }) => (
                 <div
-                    key={i}
+                    key={id}
                     className="w-[3px] rounded-full transition-all duration-700 ease-out"
                     style={{
                         height: `${v}%`,
@@ -65,6 +68,126 @@ const SignalBar: React.FC = () => {
     );
 };
 
+const HeroFeatures: React.FC<{ mounted: boolean }> = ({ mounted }) => {
+    return (
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+            {[
+                {
+                    icon: Activity,
+                    title: 'Real-time Monitoring',
+                    desc: 'Live sensor data from machines processed with sub-second latency. Continuous health tracking and anomaly detection.',
+                    accent: 'var(--accent-primary)',
+                    hasSignal: true,
+                },
+                {
+                    icon: Cpu,
+                    title: 'AI Failure Prediction',
+                    desc: 'Deep learning models detect anomalies before they happen. Prevent downtime with data-driven maintenance scheduling.',
+                    accent: 'var(--accent-highlight)',
+                    hasSignal: false,
+                },
+                {
+                    icon: Lock,
+                    title: 'ZK-SNARK on zkSync',
+                    desc: 'Groth16 proofs verify every prediction on-chain. Tamper-proof maintenance records on Layer 2.',
+                    accent: '#6ee7b7',
+                    hasSignal: false,
+                }
+            ].map((feature, i) => (
+                <div
+                    key={feature.title ?? `feature-${i}`}
+                    className="group relative p-5 rounded-xl border border-white/[0.07] bg-[#060b14]/80 backdrop-blur-sm hover:bg-white/[0.04] hover:border-white/[0.14] transition-all duration-500 cursor-default overflow-hidden"
+                >
+                    {/* Corner accent */}
+                    <div className="absolute top-0 left-0 w-12 h-px transition-all duration-500 group-hover:w-20"
+                        style={{ background: `linear-gradient(90deg, ${feature.accent}, transparent)` }} />
+                    <div className="absolute top-0 left-0 h-12 w-px transition-all duration-500 group-hover:h-20"
+                        style={{ background: `linear-gradient(180deg, ${feature.accent}, transparent)` }} />
+
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center border border-white/[0.07]"
+                            style={{ background: `linear-gradient(135deg, ${feature.accent}15, transparent)` }}>
+                            <feature.icon size={18} style={{ color: feature.accent }} className="opacity-90" />
+                        </div>
+                        {feature.hasSignal && <SignalBar />}
+                    </div>
+
+                    <h3 className="text-sm font-bold text-white mb-2 tracking-wide">{feature.title}</h3>
+                    <p className="text-xs text-white/60 leading-relaxed">{feature.desc}</p>
+
+                    {/* Bottom glow on hover */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{ background: `linear-gradient(90deg, transparent, ${feature.accent}40, transparent)` }} />
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const HeroAuthModal: React.FC<{ showAuthModal: boolean, setShowAuthModal: (v: boolean) => void, router: any }> = ({ showAuthModal, setShowAuthModal, router }) => {
+    if (!showAuthModal) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div role="presentation" aria-hidden="true" className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAuthModal(false)} onKeyDown={(e) => { if (e.key === 'Escape') setShowAuthModal(false); }} />
+
+            <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0c1322]/95 backdrop-blur-xl p-8 animate-zoom-in shadow-2xl shadow-black/50">
+                {/* Close */}
+                <button
+                    onClick={() => setShowAuthModal(false)}
+                    className="absolute top-4 right-4 p-2 text-white/40 hover:text-white/80 hover:bg-white/5 rounded-lg transition-all"
+                >
+                    <X size={18} />
+                </button>
+
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5 border border-[var(--accent-primary)]/20"
+                        style={{ background: 'linear-gradient(135deg, rgba(45,139,139,0.15), rgba(45,139,139,0.03))' }}>
+                        <Activity className="text-[var(--accent-highlight)]" size={26} />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Connect to ZeroPdM</h2>
+                    <p className="text-white/60 mt-2 text-sm">Authenticate with your wallet to continue</p>
+                </div>
+
+                {/* Options */}
+                <div className="space-y-3">
+                    <button
+                        onClick={() => router.push('/login?mode=LOGIN')}
+                        className="group w-full flex items-center gap-4 p-4 rounded-xl border border-white/[0.07] hover:border-[var(--accent-primary)]/30 bg-white/[0.02] hover:bg-[var(--accent-primary)]/5 transition-all duration-300 text-left"
+                    >
+                        <div className="w-11 h-11 rounded-lg flex items-center justify-center border border-[var(--accent-primary)]/15 bg-[var(--accent-primary)]/5 group-hover:bg-[var(--accent-primary)]/10 transition-colors">
+                            <LogIn size={20} className="text-[var(--accent-primary)]" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="text-sm font-semibold text-white">Sign In</div>
+                            <div className="text-xs text-white/60 mt-0.5">Access your existing dashboard</div>
+                        </div>
+                        <ArrowRight size={16} className="text-white/30 group-hover:text-[var(--accent-primary)] group-hover:translate-x-1 transition-all duration-300" />
+                    </button>
+
+                    <button
+                        onClick={() => router.push('/login?mode=REGISTER')}
+                        className="group w-full flex items-center gap-4 p-4 rounded-xl border border-white/[0.07] hover:border-emerald-500/20 bg-white/[0.02] hover:bg-emerald-500/5 transition-all duration-300 text-left"
+                    >
+                        <div className="w-11 h-11 rounded-lg flex items-center justify-center border border-emerald-500/15 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors">
+                            <UserPlus size={20} className="text-emerald-400" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="text-sm font-semibold text-white">Register Node</div>
+                            <div className="text-xs text-white/60 mt-0.5">Set up a new maintenance identity</div>
+                        </div>
+                        <ArrowRight size={16} className="text-white/30 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all duration-300" />
+                    </button>
+                </div>
+
+                <p className="text-center text-[10px] text-white/35 mt-7 font-mono tracking-wider uppercase">
+                    MetaMask wallet required to authenticate
+                </p>
+            </div>
+        </div>
+    );
+};
+
 /* ───────────────────────────────────────────────────────
    HERO
    ─────────────────────────────────────────────────────── */
@@ -73,7 +196,10 @@ const Hero: React.FC = () => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [mounted, setMounted] = useState(false);
 
-    useEffect(() => { setMounted(true); }, []);
+    useEffect(() => {
+        const t = setTimeout(() => setMounted(true), 0);
+        return () => clearTimeout(t);
+    }, []);
 
     return (
         <div className="relative h-screen flex flex-col overflow-hidden bg-[#060b14]">
@@ -90,7 +216,7 @@ const Hero: React.FC = () => {
                 style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(6,11,20,0.7) 100%)' }} />
 
             {/* ─── Navigation ─── */}
-            <nav className={`relative z-20 w-full px-6 md:px-12 py-4 flex items-center justify-between transition-all duration-700 shrink-0 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+            <nav suppressHydrationWarning className={`relative z-20 w-full px-6 md:px-12 py-4 flex items-center justify-between transition-all duration-700 shrink-0 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <div className="w-11 h-11 rounded-lg flex items-center justify-center border border-[var(--accent-primary)]/30"
@@ -181,57 +307,7 @@ const Hero: React.FC = () => {
                     </div>
 
                     {/* ─── Feature cards ─── */}
-                    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-                        {[
-                            {
-                                icon: Activity,
-                                title: 'Real-time Monitoring',
-                                desc: 'Live sensor data from machines processed with sub-second latency. Continuous health tracking and anomaly detection.',
-                                accent: 'var(--accent-primary)',
-                                hasSignal: true,
-                            },
-                            {
-                                icon: Cpu,
-                                title: 'AI Failure Prediction',
-                                desc: 'Deep learning models detect anomalies before they happen. Prevent downtime with data-driven maintenance scheduling.',
-                                accent: 'var(--accent-highlight)',
-                                hasSignal: false,
-                            },
-                            {
-                                icon: Lock,
-                                title: 'ZK-SNARK on zkSync',
-                                desc: 'Groth16 proofs verify every prediction on-chain. Tamper-proof maintenance records on Layer 2.',
-                                accent: '#6ee7b7',
-                                hasSignal: false,
-                            }
-                        ].map((feature, i) => (
-                            <div
-                                key={i}
-                                className="group relative p-5 rounded-xl border border-white/[0.07] bg-[#060b14]/80 backdrop-blur-sm hover:bg-white/[0.04] hover:border-white/[0.14] transition-all duration-500 cursor-default overflow-hidden"
-                            >
-                                {/* Corner accent */}
-                                <div className="absolute top-0 left-0 w-12 h-px transition-all duration-500 group-hover:w-20"
-                                    style={{ background: `linear-gradient(90deg, ${feature.accent}, transparent)` }} />
-                                <div className="absolute top-0 left-0 h-12 w-px transition-all duration-500 group-hover:h-20"
-                                    style={{ background: `linear-gradient(180deg, ${feature.accent}, transparent)` }} />
-
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center border border-white/[0.07]"
-                                        style={{ background: `linear-gradient(135deg, ${feature.accent}15, transparent)` }}>
-                                        <feature.icon size={18} style={{ color: feature.accent }} className="opacity-90" />
-                                    </div>
-                                    {feature.hasSignal && <SignalBar />}
-                                </div>
-
-                                <h3 className="text-sm font-bold text-white mb-2 tracking-wide">{feature.title}</h3>
-                                <p className="text-xs text-white/60 leading-relaxed">{feature.desc}</p>
-
-                                {/* Bottom glow on hover */}
-                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                                    style={{ background: `linear-gradient(90deg, transparent, ${feature.accent}40, transparent)` }} />
-                            </div>
-                        ))}
-                    </div>
+                    <HeroFeatures mounted={mounted} />
                 </div>
             </div>
 
@@ -243,66 +319,7 @@ const Hero: React.FC = () => {
             </div>
 
             {/* ─── Auth Modal ─── */}
-            {showAuthModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAuthModal(false)} />
-
-                    <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0c1322]/95 backdrop-blur-xl p-8 animate-zoom-in shadow-2xl shadow-black/50">
-                        {/* Close */}
-                        <button
-                            onClick={() => setShowAuthModal(false)}
-                            className="absolute top-4 right-4 p-2 text-white/40 hover:text-white/80 hover:bg-white/5 rounded-lg transition-all"
-                        >
-                            <X size={18} />
-                        </button>
-
-                        {/* Header */}
-                        <div className="text-center mb-8">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5 border border-[var(--accent-primary)]/20"
-                                style={{ background: 'linear-gradient(135deg, rgba(45,139,139,0.15), rgba(45,139,139,0.03))' }}>
-                                <Activity className="text-[var(--accent-highlight)]" size={26} />
-                            </div>
-                            <h2 className="text-xl font-bold text-white tracking-tight">Connect to ZeroPdM</h2>
-                            <p className="text-white/60 mt-2 text-sm">Authenticate with your wallet to continue</p>
-                        </div>
-
-                        {/* Options */}
-                        <div className="space-y-3">
-                            <button
-                                onClick={() => router.push('/login?mode=LOGIN')}
-                                className="group w-full flex items-center gap-4 p-4 rounded-xl border border-white/[0.07] hover:border-[var(--accent-primary)]/30 bg-white/[0.02] hover:bg-[var(--accent-primary)]/5 transition-all duration-300 text-left"
-                            >
-                                <div className="w-11 h-11 rounded-lg flex items-center justify-center border border-[var(--accent-primary)]/15 bg-[var(--accent-primary)]/5 group-hover:bg-[var(--accent-primary)]/10 transition-colors">
-                                    <LogIn size={20} className="text-[var(--accent-primary)]" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-sm font-semibold text-white">Sign In</div>
-                                    <div className="text-xs text-white/60 mt-0.5">Access your existing dashboard</div>
-                                </div>
-                                <ArrowRight size={16} className="text-white/30 group-hover:text-[var(--accent-primary)] group-hover:translate-x-1 transition-all duration-300" />
-                            </button>
-
-                            <button
-                                onClick={() => router.push('/login?mode=REGISTER')}
-                                className="group w-full flex items-center gap-4 p-4 rounded-xl border border-white/[0.07] hover:border-emerald-500/20 bg-white/[0.02] hover:bg-emerald-500/5 transition-all duration-300 text-left"
-                            >
-                                <div className="w-11 h-11 rounded-lg flex items-center justify-center border border-emerald-500/15 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors">
-                                    <UserPlus size={20} className="text-emerald-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-sm font-semibold text-white">Register Node</div>
-                                    <div className="text-xs text-white/60 mt-0.5">Set up a new maintenance identity</div>
-                                </div>
-                                <ArrowRight size={16} className="text-white/30 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all duration-300" />
-                            </button>
-                        </div>
-
-                        <p className="text-center text-[10px] text-white/35 mt-7 font-mono tracking-wider uppercase">
-                            MetaMask wallet required to authenticate
-                        </p>
-                    </div>
-                </div>
-            )}
+            <HeroAuthModal showAuthModal={showAuthModal} setShowAuthModal={setShowAuthModal} router={router} />
 
             {/* ─── Inline styles for cube background ─── */}
             <style>{`

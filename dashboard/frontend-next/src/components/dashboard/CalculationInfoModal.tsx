@@ -93,21 +93,23 @@ export const CalculationInfoModal: React.FC<CalculationInfoModalProps> = ({ isOp
                                     <p className="font-semibold text-white/60 mb-1">Why these weights?</p>
                                     <p className="italic text-white/30">
                                         Weights are derived from
-                                        <span
+                                        <button
+                                            type="button"
                                             onClick={() => onDownload('ISO 13381-1', 'ISO_13381_1_Guidelines.txt')}
-                                            className="font-bold text-[var(--accent-highlight)] hover:underline cursor-pointer mx-1"
+                                            className="font-bold text-[var(--accent-highlight)] hover:underline mx-1"
                                             title="Click to download ISO guidelines"
                                         >
                                             ISO 13381-1 (Condition Monitoring)
-                                        </span>
+                                        </button>
                                         guidelines and
-                                        <span
+                                        <button
+                                            type="button"
                                             onClick={() => onDownload('FMEA', 'FMEA_Methodology.txt')}
-                                            className="font-bold text-[var(--accent-highlight)] hover:underline cursor-pointer mx-1"
+                                            className="font-bold text-[var(--accent-highlight)] hover:underline mx-1"
                                             title="Click to download FMEA methodology"
                                         >
                                             FMEA (Failure Mode and Effects Analysis)
-                                        </span>
+                                        </button>
                                         for CNC machinery.
                                         <br /><br />
                                         In milling operations, <span className="text-emerald-400 font-medium">Tool Wear</span> is statistically the #1 cause of catastrophic failure (35%), followed by <span className="text-emerald-400 font-medium">Torque</span> overload (25%).

@@ -14,28 +14,26 @@ class GasEstimator:
 
     def estimate_gas(self, transaction: dict, fallback_limit: int, buffer: float = None) -> int:
         """
-        Estimate gas for a transaction with fallback to configured limit.
+        Estimate gas for a transaction.
 
         Args:
             transaction: Transaction dict (must include 'from', optionally 'to', 'data')
-            fallback_limit: Fallback gas limit if estimation fails
+            fallback_limit: Used only if estimation raises an exception
             buffer: Gas buffer multiplier (default from config)
 
         Returns:
-            Estimated gas with buffer, or fallback limit
+            Estimated gas with buffer applied
         """
         if buffer is None:
             buffer = BlockchainConfig.GAS_ESTIMATION_BUFFER
-
-        if not BlockchainConfig.USE_DYNAMIC_GAS_ESTIMATION:
-            return fallback_limit
 
         try:
             estimated = self.web3.eth.estimate_gas(transaction)
             return int(estimated * buffer)
         except Exception as e:
-            logger.debug(f"Gas estimation failed, using fallback: {e}")
+            logger.warning(f"Gas estimation failed, using fallback limit {fallback_limit}: {e}")
             return fallback_limit
+
 
     def get_gas_price(self, buffer: float = None) -> int:
         """

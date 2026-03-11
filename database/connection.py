@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import pool, extras
 import logging
+import threading
 import time
 from typing import Optional
 from config import DatabaseConfig
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 class DatabaseConnection:
     """Veritabanı bağlantı yönetimini sağlayan sınıf"""
     _pool = None
+    _pool_lock = threading.Lock()
 
     def __init__(self):
         self._initialize_pool()
@@ -17,20 +19,21 @@ class DatabaseConnection:
 
     def _initialize_pool(self):
         """Connection pool oluştur"""
-        if DatabaseConnection._pool is None:
-            try:
-                DatabaseConnection._pool = psycopg2.pool.SimpleConnectionPool(
-                    1, 20,
-                    user=DatabaseConfig.DB_USER,
-                    password=DatabaseConfig.DB_PASSWORD,
-                    host=DatabaseConfig.DB_HOST,
-                    port=DatabaseConfig.DB_PORT,
-                    database=DatabaseConfig.DB_NAME
-                )
-                logger.info("Connection pool created successfully")
-            except Exception as e:
-                logger.error(f"Error creating connection pool: {e}")
-                DatabaseConnection._pool = None
+        with DatabaseConnection._pool_lock:
+            if DatabaseConnection._pool is None:
+                try:
+                    DatabaseConnection._pool = psycopg2.pool.SimpleConnectionPool(
+                        1, 20,
+                        user=DatabaseConfig.DB_USER,
+                        password=DatabaseConfig.DB_PASSWORD,
+                        host=DatabaseConfig.DB_HOST,
+                        port=DatabaseConfig.DB_PORT,
+                        database=DatabaseConfig.DB_NAME
+                    )
+                    logger.info("Connection pool created successfully")
+                except Exception as e:
+                    logger.error(f"Error creating connection pool: {e}")
+                    DatabaseConnection._pool = None
 
     def get_connection(self):
         """Pool'dan bağlantı al"""
@@ -125,6 +128,23 @@ class DatabaseConnection:
                 );
             """)
 
+            # Maintenance tasks tablosu (kullanıcı tarafından oluşturulan planlı görevler)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS maintenance_tasks (
+                    id SERIAL PRIMARY KEY,
+                    machine_id INTEGER NOT NULL,
+                    machine_type VARCHAR(5),
+                    task TEXT NOT NULL,
+                    due_date DATE,
+                    priority VARCHAR(10) DEFAULT 'MEDIUM',
+                    status VARCHAR(20) DEFAULT 'PENDING',
+                    estimated_duration VARCHAR(50),
+                    notes TEXT,
+                    created_by VARCHAR(42),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
             # Notifications tablosu
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS notifications (
@@ -149,6 +169,48 @@ class DatabaseConnection:
                 );
             """)
             
+            # Batch submission ana tablosu
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS batch_submissions (
+                    id           SERIAL PRIMARY KEY,
+                    batch_type   VARCHAR(10) NOT NULL,
+                    record_count INTEGER NOT NULL,
+                    merkle_root  VARCHAR(100) NOT NULL,
+                    tx_hash      VARCHAR(66),
+                    block_number BIGINT,
+                    gas_used     BIGINT,
+                    status       VARCHAR(20) DEFAULT 'PENDING',
+                    error_msg    TEXT,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    submitted_at TIMESTAMP
+                );
+            """)
+
+            # sensor_data tablosuna batch kolonları ekle
+            cur.execute("""
+                ALTER TABLE sensor_data
+                    ADD COLUMN IF NOT EXISTS chain_hash  VARCHAR(100),
+                    ADD COLUMN IF NOT EXISTS batch_id    INTEGER REFERENCES batch_submissions(id),
+                    ADD COLUMN IF NOT EXISTS batch_index INTEGER;
+            """)
+
+            # Arıza kayıtları batch kuyruğu
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS batch_fault_queue (
+                    id              SERIAL PRIMARY KEY,
+                    machine_id      INTEGER NOT NULL,
+                    data_proof_id   INTEGER NOT NULL DEFAULT 0,
+                    prediction      INTEGER NOT NULL,
+                    prediction_prob FLOAT NOT NULL,
+                    recorded_by     VARCHAR(42),
+                    data_hash       VARCHAR(66),
+                    chain_hash      VARCHAR(100),
+                    batch_id        INTEGER REFERENCES batch_submissions(id),
+                    batch_index     INTEGER,
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
             conn.commit()
             logger.info("Database tables initialized successfully")
             

@@ -24,8 +24,8 @@ class SensorData(BaseModel):
     air_temp_k: float = Field(default=298.0, ge=250.0, le=350.0)
     process_temp_k: float = Field(default=308.0, ge=250.0, le=400.0)
     rotational_speed_rpm: int = Field(default=1500, ge=0, le=5000)
-    torque_nm: float = Field(default=40.0, ge=0.0, le=100.0)
-    tool_wear_min: float = Field(default=0.0, ge=0.0, le=500.0)
+    torque_nm: float = Field(default=40.0, ge=0.0, le=250.0)
+    tool_wear_min: float = Field(default=0.0, ge=0.0, le=600.0)
     machine_type: str = Field(default="M")
     id: Optional[int] = Field(default=None)
 

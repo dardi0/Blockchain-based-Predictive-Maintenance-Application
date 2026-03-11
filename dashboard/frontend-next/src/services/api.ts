@@ -12,6 +12,8 @@ import {
     AnalyticsData,
     SessionKeyStatus,
     BackendSubmitResult,
+    BatchStatusResponse,
+    BatchSubmission,
 } from '../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -844,5 +846,43 @@ export const api = {
             throw new Error(err.detail || 'No training results');
         }
         return await response.json();
-    }
+    },
+
+    // ========== BATCH ==========
+
+    async getBatchStatus(): Promise<BatchStatusResponse> {
+        const response = await fetch(`${API_URL}/batch/status`, {
+            headers: buildHeaders(),
+        });
+        if (!response.ok) throw new Error('Failed to fetch batch status');
+        return await response.json();
+    },
+
+    async getBatchSubmissions(limit: number = 20): Promise<{ count: number; submissions: BatchSubmission[] }> {
+        const response = await fetch(`${API_URL}/batch/submissions?limit=${limit}`, {
+            headers: buildHeaders(),
+        });
+        if (!response.ok) throw new Error('Failed to fetch batch submissions');
+        return await response.json();
+    },
+
+    async flushBatch(): Promise<{ success: boolean; results?: Record<string, unknown> }> {
+        const response = await fetch(`${API_URL}/batch/flush`, {
+            method: 'POST',
+            headers: buildHeaders(),
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error((err as any).detail || 'Batch flush failed');
+        }
+        return await response.json();
+    },
+
+    async getBatchDetail(batchId: number): Promise<unknown> {
+        const response = await fetch(`${API_URL}/batch/${batchId}/records`, {
+            headers: buildHeaders(),
+        });
+        if (!response.ok) throw new Error('Failed to fetch batch detail');
+        return await response.json();
+    },
 };

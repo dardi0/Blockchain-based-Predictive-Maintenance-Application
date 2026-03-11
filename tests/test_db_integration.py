@@ -55,7 +55,7 @@ class TestDBIntegration:
     def test_sensor_data_crud(self, db_manager):
         """Test insert and retrieval of sensor data"""
         data = SensorData(
-            machine_id=9999,
+            machine_id=9001,
             timestamp=int(time.time()),
             air_temp=300.0,
             process_temp=310.0,
@@ -86,7 +86,7 @@ class TestDBIntegration:
         rows = db_manager.get_sensor_data(record_id=record_id)
         assert len(rows) == 1
         fetched = rows[0]
-        assert fetched['machine_id'] == 9999
+        assert fetched['machine_id'] == 9001
         assert fetched['air_temp'] == 300.0
         
         # Verify alias keys exist for backward compatibility

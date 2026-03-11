@@ -242,7 +242,7 @@ const SensorInput: React.FC<SensorInputProps> = ({ machines, onSave, walletAddre
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full group relative flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-highlight)] text-white rounded-lg font-bold tracking-wide hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                                className="w-full group relative flex items-center justify-center gap-2 py-3 bg-[var(--accent-primary)] text-white rounded-lg font-bold tracking-wide hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
                             >
                                 <div className="absolute inset-0 rounded-lg bg-white/20 group-hover:opacity-100 opacity-0 transition-opacity" />
                                 {loading ? (

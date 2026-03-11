@@ -40,6 +40,10 @@ export interface SensorData {
     prediction_tx_hash?: string;
     prediction?: number;
     prediction_probability?: number;
+    // Batch tracking columns
+    batch_id?: number | null;
+    batch_index?: number | null;
+    chain_hash?: string | null;
 }
 
 export interface PredictionInfo {
@@ -301,6 +305,38 @@ export interface NotificationItem {
     created_at: string;
     read: boolean;
     action_url?: string;
+}
+
+// ============ BATCH TYPES ============
+
+export interface BatchSenderStatus {
+    running: boolean;
+    last_flush: string | null;
+    total_batches: number;
+    total_records: number;
+}
+
+export interface BatchSubmission {
+    id: number;
+    batch_type: string; // 'SENSOR' | 'FAULT'
+    record_count: number;
+    merkle_root: string;
+    tx_hash: string | null;
+    block_number: number | null;
+    gas_used: number | null;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
+    error_msg: string | null;
+    created_at: string;
+    confirmed_at: string | null;
+}
+
+export interface BatchStatusResponse {
+    batch_interval: number;
+    batch_max_size: number;
+    batch_min_size: number;
+    pending_sensor_count: number;
+    sender: BatchSenderStatus;
+    recent_submissions: BatchSubmission[];
 }
 
 // ============ ANALYTICS TYPES ============

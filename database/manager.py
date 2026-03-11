@@ -3,6 +3,7 @@ from psycopg2 import extras
 import logging
 import time
 import json
+import hashlib
 from decimal import Decimal, InvalidOperation
 from typing import List, Dict, Optional, Tuple, Any
 from .connection import DatabaseConnection
@@ -70,6 +71,25 @@ class PdMDatabaseManager(DatabaseConnection):
                 return True
         except Exception as e:
             logger.error(f"❌ Bildirim güncelleme hatası: {e}")
+            return False
+        finally:
+            self.return_connection(conn)
+
+    def mark_all_notifications_read(self, user_address: str) -> bool:
+        """Kullanıcının tüm bildirimlerini okundu olarak işaretle"""
+        conn = self.get_connection()
+        if not conn: return False
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE notifications 
+                    SET is_read = TRUE 
+                    WHERE lower(user_address) = lower(%s) AND is_read = FALSE
+                """, (user_address,))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"❌ Tüm bildirimleri okundu işaretleme hatası: {e}")
             return False
         finally:
             self.return_connection(conn)
@@ -193,7 +213,6 @@ class PdMDatabaseManager(DatabaseConnection):
                 recorded_by = sensor_data.get('recorded_by') or sensor_data.get('submitter', '')
                 
                 # data_hash oluştur
-                import hashlib
                 data_str = f"{machine_id}-{air_temp}-{process_temp}-{rotation_speed}-{sensor_data.get('timestamp', int(time.time()))}"
                 data_hash = "0x" + hashlib.sha256(data_str.encode()).hexdigest()
 
@@ -459,45 +478,55 @@ class PdMDatabaseManager(DatabaseConnection):
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
                 if record_id:
-                    cursor.execute("SELECT * FROM sensor_data WHERE id = %s", (record_id,))
+                    cursor.execute("""
+                        SELECT sd.*, bs.record_count AS batch_record_count
+                        FROM sensor_data sd
+                        LEFT JOIN batch_submissions bs ON sd.batch_id = bs.id
+                        WHERE sd.id = %s
+                    """, (record_id,))
                     result = cursor.fetchone()
                     return [self._row_to_dict(dict(result))] if result else []
                 else:
-                    query = "SELECT * FROM sensor_data WHERE 1=1"
+                    query = """
+                        SELECT sd.*, bs.record_count AS batch_record_count
+                        FROM sensor_data sd
+                        LEFT JOIN batch_submissions bs ON sd.batch_id = bs.id
+                        WHERE 1=1
+                    """
                     params = []
-                    
+
                     if machine_id is not None:
-                        query += " AND machine_id = %s"
+                        query += " AND sd.machine_id = %s"
                         params.append(machine_id)
 
                     if prediction_filter == "Normal":
-                        query += " AND prediction = 0"
+                        query += " AND sd.prediction = 0"
                     elif prediction_filter == "Arıza":
-                        query += " AND prediction = 1"
-                    
+                        query += " AND sd.prediction = 1"
+
                     if machine_type_filter and machine_type_filter in ["L", "M", "H"]:
-                        query += " AND machine_type = %s"
+                        query += " AND sd.machine_type = %s"
                         params.append(machine_type_filter)
-                    
+
                     if blockchain_filter == "Başarılı":
-                        query += " AND blockchain_success = TRUE"
+                        query += " AND sd.blockchain_success = TRUE"
                     elif blockchain_filter == "Başarısız":
-                        query += " AND blockchain_success = FALSE"
-                    
+                        query += " AND sd.blockchain_success = FALSE"
+
                     if start_date:
-                        query += " AND created_at::DATE >= %s"
+                        query += " AND sd.created_at::DATE >= %s"
                         params.append(start_date)
-                    
+
                     if end_date:
-                        query += " AND created_at::DATE <= %s"
+                        query += " AND sd.created_at::DATE <= %s"
                         params.append(end_date)
-                    
-                    query += " ORDER BY created_at DESC LIMIT %s"
+
+                    query += " ORDER BY sd.created_at DESC LIMIT %s"
                     params.append(limit)
-                    
+
                     cursor.execute(query, params)
                     results = cursor.fetchall()
-                    
+
                     return [self._row_to_dict(dict(row)) for row in results]
                 
         except Exception as e:
@@ -907,6 +936,360 @@ class PdMDatabaseManager(DatabaseConnection):
         except Exception as e:
             logger.error(f"❌ Rapor getirme hatası: {e}")
             return None
+        finally:
+            self.return_connection(conn)
+
+    def get_maintenance_schedule(self) -> List[Dict]:
+        """Planlı bakım görevlerini getir"""
+        conn = self.get_connection()
+        if not conn:
+            return []
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT * FROM maintenance_tasks ORDER BY due_date ASC, created_at DESC"
+                )
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                rows = cursor.fetchall()
+                result = []
+                for row in rows:
+                    d = dict(zip(columns, row))
+                    if d.get('due_date'):
+                        d['due_date'] = str(d['due_date'])
+                    result.append(d)
+                return result
+        except Exception as e:
+            logger.error(f"❌ Maintenance schedule getirme hatası: {e}")
+            return []
+        finally:
+            self.return_connection(conn)
+
+    def save_maintenance_task(self, machine_id: int, machine_type: str, task: str,
+                              due_date: str, priority: str, estimated_duration: str,
+                              notes: str, created_by: str) -> int:
+        """Yeni bakım görevi kaydet"""
+        conn = self.get_connection()
+        if not conn:
+            return 0
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO maintenance_tasks
+                    (machine_id, machine_type, task, due_date, priority, status, estimated_duration, notes, created_by)
+                    VALUES (%s, %s, %s, %s, %s, 'PENDING', %s, %s, %s)
+                    RETURNING id
+                """, (machine_id, machine_type, task, due_date, priority.upper(),
+                      estimated_duration, notes, created_by))
+                task_id = cursor.fetchone()[0]
+            conn.commit()
+            return task_id
+        except Exception as e:
+            logger.error(f"❌ Maintenance task kaydetme hatası: {e}")
+            conn.rollback()
+            return 0
+        finally:
+            self.return_connection(conn)
+
+    # ========== BATCH SUBMISSION METHODS ==========
+
+    def get_pending_sensor_records_for_batch(self, limit: int = 64) -> List[Dict]:
+        """Batch için bekleyen sensör kayıtlarını getir (batch_id IS NULL ve data_hash mevcut).
+
+        NOT: blockchain_success koşulu kasıtlı olarak çıkarıldı — bu alan Chainlink oracle
+        TX'ini izler, ZK batch eligibility'sini değil. batch_id IS NULL yeterli koşuldur.
+        """
+        conn = self.get_connection()
+        if not conn:
+            return []
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT id, data_hash, chain_hash, machine_id, timestamp
+                    FROM sensor_data
+                    WHERE batch_id IS NULL
+                      AND data_hash IS NOT NULL
+                    ORDER BY id ASC
+                    LIMIT %s
+                """, (limit,))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"get_pending_sensor_records_for_batch hatasi: {e}")
+            return []
+        finally:
+            self.return_connection(conn)
+
+    def count_pending_sensor_records(self) -> int:
+        """Batch için bekleyen sensör kayıtlarının sayısını döndür (hafif COUNT sorgusu)."""
+        conn = self.get_connection()
+        if not conn:
+            return 0
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM sensor_data
+                    WHERE batch_id IS NULL AND data_hash IS NOT NULL
+                """)
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            logger.error(f"count_pending_sensor_records hatasi: {e}")
+            return 0
+        finally:
+            self.return_connection(conn)
+
+    def get_pending_fault_records_for_batch(self, limit: int = 64) -> List[Dict]:
+        """Batch için bekleyen arıza kayıtlarını getir."""
+        conn = self.get_connection()
+        if not conn:
+            return []
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT id, machine_id, prediction, prediction_prob,
+                           recorded_by, data_hash, chain_hash
+                    FROM batch_fault_queue
+                    WHERE batch_id IS NULL
+                    ORDER BY id ASC
+                    LIMIT %s
+                """, (limit,))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"get_pending_fault_records_for_batch hatasi: {e}")
+            return []
+        finally:
+            self.return_connection(conn)
+
+    def create_batch_submission(self, batch_type: str, record_count: int,
+                                 merkle_root: str) -> int:
+        """Yeni batch submission kaydı oluştur, PENDING durumunda. ID döndürür."""
+        conn = self.get_connection()
+        if not conn:
+            return 0
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO batch_submissions (batch_type, record_count, merkle_root, status)
+                    VALUES (%s, %s, %s, 'PENDING')
+                    RETURNING id
+                """, (batch_type, record_count, merkle_root))
+                batch_id = cursor.fetchone()[0]
+            conn.commit()
+            return batch_id
+        except Exception as e:
+            logger.error(f"create_batch_submission hatasi: {e}")
+            conn.rollback()
+            return 0
+        finally:
+            self.return_connection(conn)
+
+    def update_batch_submission(self, batch_id: int, tx_hash: str = None,
+                                 block_number: int = None, gas_used: int = None,
+                                 status: str = None, error_msg: str = None) -> bool:
+        """Batch submission kaydını güncelle."""
+        conn = self.get_connection()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                parts = []
+                params = []
+                if tx_hash is not None:
+                    parts.append("tx_hash = %s")
+                    params.append(tx_hash)
+                if block_number is not None:
+                    parts.append("block_number = %s")
+                    params.append(block_number)
+                if gas_used is not None:
+                    parts.append("gas_used = %s")
+                    params.append(gas_used)
+                if status is not None:
+                    parts.append("status = %s")
+                    params.append(status)
+                    if status in ('SUCCESS', 'FAILED'):
+                        parts.append("submitted_at = CURRENT_TIMESTAMP")
+                if error_msg is not None:
+                    parts.append("error_msg = %s")
+                    params.append(error_msg)
+                if not parts:
+                    return True
+                params.append(batch_id)
+                cursor.execute(
+                    f"UPDATE batch_submissions SET {', '.join(parts)} WHERE id = %s",
+                    params
+                )
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"update_batch_submission hatasi: {e}")
+            conn.rollback()
+            return False
+        finally:
+            self.return_connection(conn)
+
+    def mark_sensor_records_batched(self, record_ids: List[int], batch_id: int) -> bool:
+        """Sensör kayıtlarını batch ile ilişkilendir ve başarılı olarak işaretle."""
+        conn = self.get_connection()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                for idx, rid in enumerate(record_ids):
+                    cursor.execute("""
+                        UPDATE sensor_data
+                        SET batch_id = %s, batch_index = %s, blockchain_success = TRUE
+                        WHERE id = %s
+                    """, (batch_id, idx, rid))
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"mark_sensor_records_batched hatasi: {e}")
+            conn.rollback()
+            return False
+        finally:
+            self.return_connection(conn)
+
+    def mark_fault_records_batched(self, record_ids: List[int], batch_id: int) -> bool:
+        """Arıza kayıtlarını batch ile ilişkilendir."""
+        conn = self.get_connection()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                for idx, rid in enumerate(record_ids):
+                    cursor.execute("""
+                        UPDATE batch_fault_queue
+                        SET batch_id = %s, batch_index = %s
+                        WHERE id = %s
+                    """, (batch_id, idx, rid))
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"mark_fault_records_batched hatasi: {e}")
+            conn.rollback()
+            return False
+        finally:
+            self.return_connection(conn)
+
+    def enqueue_fault_for_batch(self, machine_id: int, prediction: int,
+                                 prediction_prob: float, recorded_by: str = None,
+                                 data_proof_id: int = 0) -> int:
+        """Arıza kaydını batch kuyruğuna ekle. ID döndürür."""
+        conn = self.get_connection()
+        if not conn:
+            return 0
+        try:
+            data_str = f"{machine_id}-{prediction}-{prediction_prob}-{time.time()}"
+            data_hash = "0x" + hashlib.sha256(data_str.encode()).hexdigest()
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO batch_fault_queue
+                        (machine_id, data_proof_id, prediction, prediction_prob,
+                         recorded_by, data_hash)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (machine_id, data_proof_id, prediction, prediction_prob,
+                      recorded_by, data_hash))
+                fault_id = cursor.fetchone()[0]
+            conn.commit()
+            return fault_id
+        except Exception as e:
+            logger.error(f"enqueue_fault_for_batch hatasi: {e}")
+            conn.rollback()
+            return 0
+        finally:
+            self.return_connection(conn)
+
+    def update_sensor_chain_hash(self, record_id: int, chain_hash: str) -> bool:
+        """Sensör kaydına chain_hash değerini yaz."""
+        conn = self.get_connection()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE sensor_data SET chain_hash = %s WHERE id = %s",
+                    (chain_hash, record_id)
+                )
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"update_sensor_chain_hash hatasi: {e}")
+            conn.rollback()
+            return False
+        finally:
+            self.return_connection(conn)
+
+    def get_recent_batch_submissions(self, limit: int = 20) -> List[Dict]:
+        """Son batch submission kayıtlarını getir."""
+        conn = self.get_connection()
+        if not conn:
+            return []
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT * FROM batch_submissions
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (limit,))
+                rows = cursor.fetchall()
+                result = []
+                for row in rows:
+                    d = dict(row)
+                    for k, v in d.items():
+                        if hasattr(v, 'isoformat'):
+                            d[k] = v.isoformat()
+                    result.append(d)
+                return result
+        except Exception as e:
+            logger.error(f"get_recent_batch_submissions hatasi: {e}")
+            return []
+        finally:
+            self.return_connection(conn)
+
+    def get_batch_detail(self, batch_id: int) -> Dict:
+        """Tek bir batch'in detaylarını ve içindeki kayıtları döndürür."""
+        conn = self.get_connection()
+        if not conn:
+            return {}
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+                # Batch metadata
+                cursor.execute("""
+                    SELECT * FROM batch_submissions WHERE id = %s
+                """, (batch_id,))
+                batch_row = cursor.fetchone()
+                if not batch_row:
+                    return {}
+                batch = dict(batch_row)
+                for k, v in batch.items():
+                    if hasattr(v, 'isoformat'):
+                        batch[k] = v.isoformat()
+
+                # Sensor records inside this batch
+                cursor.execute("""
+                    SELECT
+                        sd.id, sd.machine_id, sd.air_temp_k, sd.process_temp_k,
+                        sd.rotational_speed_rpm, sd.torque_nm, sd.tool_wear_min,
+                        sd.machine_type, sd.timestamp, sd.batch_index,
+                        sd.prediction_result, sd.prediction_probability,
+                        sd.prediction_reason, sd.blockchain_success,
+                        sd.blockchain_tx_hash, sd.recorded_by
+                    FROM sensor_readings sd
+                    WHERE sd.batch_id = %s
+                    ORDER BY sd.batch_index ASC NULLS LAST, sd.id ASC
+                """, (batch_id,))
+                records = []
+                for row in cursor.fetchall():
+                    d = dict(row)
+                    for k, v in d.items():
+                        if hasattr(v, 'isoformat'):
+                            d[k] = v.isoformat()
+                    records.append(d)
+
+                return {'batch': batch, 'records': records, 'record_count': len(records)}
+        except Exception as e:
+            logger.error(f"get_batch_detail hatasi: {e}")
+            return {}
         finally:
             self.return_connection(conn)
 

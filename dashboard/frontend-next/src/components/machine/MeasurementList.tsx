@@ -2,7 +2,32 @@
 
 import React from 'react';
 import { Machine, MachineStatus, SensorData } from '../../types';
-import { AlertTriangle, Activity, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Activity, CheckCircle, Clock, Layers, Hourglass } from 'lucide-react';
+
+function BatchBadge({ m }: { m: SensorData }) {
+    if (m.chain_hash) {
+        return (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 w-fit" title={'Batch #' + m.batch_id}>
+                <Layers size={10} />
+                <span className="text-[10px] font-semibold">Batched</span>
+            </div>
+        );
+    }
+    if (m.batch_id) {
+        return (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 w-fit" title={'In batch queue #' + m.batch_id}>
+                <Hourglass size={10} />
+                <span className="text-[10px] font-semibold">In Batch</span>
+            </div>
+        );
+    }
+    return (
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.07] text-white/30 w-fit">
+            <Clock size={10} />
+            <span className="text-[10px] font-semibold">Awaiting</span>
+        </div>
+    );
+}
 
 interface MeasurementWithMachine extends SensorData {
     machine: Machine;
@@ -90,7 +115,7 @@ export const MeasurementList: React.FC<MeasurementListProps> = ({
                                     <span>Tool Wear: <span className="font-mono text-white/60">{measurement.toolWear} min</span></span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1 mr-4 min-w-[140px]">
+                            <div className="flex flex-col items-end gap-1 mr-4 min-w-[160px]">
                                 {measurement.prediction !== undefined && measurement.prediction !== null ? (
                                     <>
                                         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${measurement.prediction === 1
@@ -104,24 +129,21 @@ export const MeasurementList: React.FC<MeasurementListProps> = ({
                                             </span>
                                         </div>
 
-                                        <div className="flex items-center gap-1.5 text-xs">
-                                            <span className="text-white/30">On-Chain:</span>
-                                            {measurement.prediction_tx_hash ? (
+                                        {measurement.prediction_tx_hash && (
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="text-white/30">On-Chain:</span>
                                                 <span className="font-medium text-emerald-400 flex items-center gap-0.5">
                                                     Verified <CheckCircle size={10} />
                                                 </span>
-                                            ) : (
-                                                <span className="font-medium text-amber-400 flex items-center gap-0.5">
-                                                    Pending <Clock size={10} />
-                                                </span>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className="flex items-center gap-1.5 px-2 py-1 bg-white/[0.03] rounded-full border border-white/[0.06] text-white/30">
                                         <span className="text-xs">Not Analyzed</span>
                                     </div>
                                 )}
+                                <BatchBadge m={measurement} />
                             </div>
                         </div>
                         <button

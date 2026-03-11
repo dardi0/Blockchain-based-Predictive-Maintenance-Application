@@ -28,7 +28,7 @@ const LazyImpl = dynamic(() =>
                             <Tooltip
                                 cursor={{ fill: 'transparent' }}
                                 contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: '#fff' }}
-                                formatter={(value: number) => [`${value}%`, 'Health Score']}
+                                formatter={(value: number | undefined) => [value !== undefined ? `${value}%` : '—', 'Health Score']}
                             />
                             <ReferenceLine x={100} stroke="#e2e8f0" strokeOpacity={0.5} />
                             <Bar dataKey="score" radius={[0, 4, 4, 0] as [number, number, number, number]} barSize={24} background={{ fill: '#f1f5f9' }}>

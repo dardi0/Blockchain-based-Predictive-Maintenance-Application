@@ -26,10 +26,12 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
     address public functionsConsumer;
 
     // --- Automation Intervals ---
-    uint256 public sensorCollectionInterval;    // e.g., 3600 = 1 hour
+    uint256 public sensorCollectionInterval;    // e.g., 180 = 3 minutes
     uint256 public reportGenerationInterval;    // e.g., 86400 = 1 day
+    uint256 public batchFlushInterval;          // e.g., 3600 = 1 hour
     uint256 public lastSensorCollectionTime;
     uint256 public lastReportGenerationTime;
+    uint256 public lastBatchFlushTime;
 
     // --- Threshold Settings ---
     uint256 public failureThreshold;            // e.g., 7000 = 70.00% confidence
@@ -50,9 +52,10 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
 
     // --- Automation Types ---
     enum AutomationType {
-        SENSOR_COLLECTION,
-        REPORT_GENERATION,
-        PROCESS_PENDING
+        SENSOR_COLLECTION,  // 0 — Predict every sensorCollectionInterval
+        REPORT_GENERATION,  // 1 — Generate report every reportGenerationInterval
+        PROCESS_PENDING,    // 2 — Process queued predictions
+        BATCH_FLUSH         // 3 — Trigger off-chain ZK batch proof + submitBatch()
     }
 
     // --- Events ---
@@ -63,10 +66,12 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
     event IntervalUpdated(string intervalType, uint256 newValue);
     event ThresholdUpdated(uint256 newThreshold);
     event FunctionsConsumerUpdated(address newConsumer);
+    event BatchFlushRequested(uint256 indexed timestamp, uint256 pendingCount);
 
     // --- Errors ---
     error TooEarlyForSensorCollection();
     error TooEarlyForReportGeneration();
+    error TooEarlyForBatchFlush();
     error NoPendingPredictions();
     error InvalidThreshold();
     error InvalidInterval();
@@ -91,6 +96,7 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
 
         lastSensorCollectionTime = block.timestamp;
         lastReportGenerationTime = block.timestamp;
+        lastBatchFlushTime = block.timestamp;
     }
 
     // --- Chainlink Automation Interface ---
@@ -117,6 +123,9 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
             upkeepNeeded = (block.timestamp - lastReportGenerationTime) >= reportGenerationInterval;
         } else if (checkType == AutomationType.PROCESS_PENDING) {
             upkeepNeeded = (pendingCount > processedCount);
+        } else if (checkType == AutomationType.BATCH_FLUSH) {
+            upkeepNeeded = batchFlushInterval > 0 &&
+                (block.timestamp - lastBatchFlushTime) >= batchFlushInterval;
         }
 
         performData = abi.encode(checkType);
@@ -136,6 +145,8 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
             _triggerReportGeneration();
         } else if (automationType == AutomationType.PROCESS_PENDING) {
             _processPendingPredictions();
+        } else if (automationType == AutomationType.BATCH_FLUSH) {
+            _triggerBatchFlush();
         }
     }
 
@@ -189,6 +200,18 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
         }
 
         emit AutomationTriggered(AutomationType.PROCESS_PENDING, block.timestamp);
+    }
+
+    function _triggerBatchFlush() internal {
+        if ((block.timestamp - lastBatchFlushTime) < batchFlushInterval) {
+            revert TooEarlyForBatchFlush();
+        }
+
+        lastBatchFlushTime = block.timestamp;
+        uint256 pending = pendingCount - processedCount;
+
+        emit BatchFlushRequested(block.timestamp, pending);
+        emit AutomationTriggered(AutomationType.BATCH_FLUSH, block.timestamp);
     }
 
     // --- Callback from Functions Consumer ---
@@ -253,6 +276,13 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
         emit ThresholdUpdated(_threshold);
     }
 
+    function setBatchFlushInterval(uint256 _interval) external onlyOwner {
+        // Zero disables batch flush automation; non-zero must be reasonable (>= 60s)
+        if (_interval != 0 && _interval < 60) revert InvalidInterval();
+        batchFlushInterval = _interval;
+        emit IntervalUpdated("batchFlush", _interval);
+    }
+
     function pause() external onlyOwner {
         _pause();
     }
@@ -281,6 +311,13 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
         }
     }
 
+    function triggerBatchFlushManual() external onlyOwner {
+        lastBatchFlushTime = block.timestamp;
+        uint256 pending = pendingCount - processedCount;
+        emit BatchFlushRequested(block.timestamp, pending);
+        emit AutomationTriggered(AutomationType.BATCH_FLUSH, block.timestamp);
+    }
+
     // --- View Functions ---
 
     function getPendingPrediction(uint256 id) external view returns (
@@ -305,15 +342,19 @@ contract ChainlinkPdMAutomation is AutomationCompatibleInterface, Ownable, Pausa
     function getAutomationStatus() external view returns (
         uint256 timeSinceLastSensor,
         uint256 timeSinceLastReport,
+        uint256 timeSinceLastBatchFlush,
         uint256 pendingToProcess,
         bool sensorDue,
-        bool reportDue
+        bool reportDue,
+        bool batchFlushDue
     ) {
         timeSinceLastSensor = block.timestamp - lastSensorCollectionTime;
         timeSinceLastReport = block.timestamp - lastReportGenerationTime;
+        timeSinceLastBatchFlush = block.timestamp - lastBatchFlushTime;
         pendingToProcess = pendingCount - processedCount;
         sensorDue = timeSinceLastSensor >= sensorCollectionInterval;
         reportDue = timeSinceLastReport >= reportGenerationInterval;
+        batchFlushDue = batchFlushInterval > 0 && timeSinceLastBatchFlush >= batchFlushInterval;
     }
 }
 

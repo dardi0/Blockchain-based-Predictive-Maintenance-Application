@@ -236,7 +236,7 @@ def get_machine_comparison():
 @router.get("/activity")
 def get_recent_activity(
     limit: int = Query(default=10, ge=1, le=100),
-    user: dict = Depends(require_role('MANAGER', 'ENGINEER', 'OWNER'))
+    user: dict = Depends(require_role('MANAGER', 'ENGINEER', 'OWNER', 'OPERATOR'))
 ):
     """Son sistem olaylarını getir"""
     db = get_db_manager()
@@ -267,7 +267,15 @@ def get_recent_activity(
                 "created_by": rep.get('created_by')
             })
 
-        activities.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        def _ts_key(x):
+            ts = x.get('timestamp', '')
+            if ts is None:
+                return ''
+            if hasattr(ts, 'isoformat'):
+                return ts.isoformat()
+            return str(ts)
+
+        activities.sort(key=_ts_key, reverse=True)
 
         return {"activities": activities[:limit]}
 

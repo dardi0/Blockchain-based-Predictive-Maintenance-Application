@@ -41,7 +41,8 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         LEGACY,           // 3
         FAULT_RECORD,     // 4
         TRAINING_RECORD,  // 5
-        REPORT_RECORD     // 6
+        REPORT_RECORD,    // 6
+        BATCH_SENSOR      // 7 — 64-yaprak Poseidon Merkle batch proof
     }
     struct DynVK {
         PairingU.G1Point alpha;
@@ -53,26 +54,9 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
     }
     mapping(CircuitType => DynVK) public circuitKeys;
 
-    // ----------------- VK Timelock -----------------
-    uint256 public constant VK_CHANGE_DELAY = 48 hours;
-
-    struct PendingVK {
-        PairingU.G1Point alpha;
-        PairingU.G2Point beta;
-        PairingU.G2Point gamma;
-        PairingU.G2Point delta;
-        PairingU.G1Point[] IC;
-        uint256 proposedAt;
-        bool exists;
-    }
-    mapping(CircuitType => PendingVK) private pendingVKChanges;
-
     event VKSet(CircuitType indexed circuitType, uint256 icLength);
-    event VKChangeProposed(CircuitType indexed circuitType, uint256 icLength, uint256 executeAfter);
-    event VKChangeExecuted(CircuitType indexed circuitType, uint256 icLength);
-    event VKChangeCancelled(CircuitType indexed circuitType);
 
-    /// @notice Set VK for initial setup only (when VK is not yet set for this circuit).
+    /// @notice Set or update VK for a circuit (owner only). Works for both initial setup and updates.
     function setCircuitVerifyingKey(
         CircuitType circuitType,
         PairingU.G1Point memory alpha,
@@ -81,61 +65,9 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         PairingU.G2Point memory delta,
         PairingU.G1Point[] memory IC
     ) external onlyOwner {
-        require(!circuitKeys[circuitType].isSet, "VK already set; use propose/execute flow");
         require(IC.length > 0, "IC empty");
         _applyVK(circuitType, alpha, beta, gamma, delta, IC);
         emit VKSet(circuitType, IC.length);
-    }
-
-    /// @notice Propose a VK change (timelock starts). Requires VK to be already set.
-    function proposeVKChange(
-        CircuitType circuitType,
-        PairingU.G1Point memory alpha,
-        PairingU.G2Point memory beta,
-        PairingU.G2Point memory gamma,
-        PairingU.G2Point memory delta,
-        PairingU.G1Point[] memory IC
-    ) external onlyOwner {
-        require(circuitKeys[circuitType].isSet, "VK not set; use setCircuitVerifyingKey");
-        require(IC.length > 0, "IC empty");
-
-        PendingVK storage p = pendingVKChanges[circuitType];
-        delete p.IC;
-        p.alpha = alpha;
-        p.beta = beta;
-        p.gamma = gamma;
-        p.delta = delta;
-        for (uint i = 0; i < IC.length; i++) { p.IC.push(IC[i]); }
-        p.proposedAt = block.timestamp;
-        p.exists = true;
-
-        emit VKChangeProposed(circuitType, IC.length, block.timestamp + VK_CHANGE_DELAY);
-    }
-
-    /// @notice Execute a pending VK change after the timelock has elapsed.
-    function executeVKChange(CircuitType circuitType) external onlyOwner {
-        PendingVK storage p = pendingVKChanges[circuitType];
-        require(p.exists, "No pending VK change");
-        require(block.timestamp >= p.proposedAt + VK_CHANGE_DELAY, "Timelock not elapsed");
-
-        _applyVK(circuitType, p.alpha, p.beta, p.gamma, p.delta, p.IC);
-        emit VKChangeExecuted(circuitType, p.IC.length);
-
-        delete pendingVKChanges[circuitType];
-    }
-
-    /// @notice Cancel a pending VK change.
-    function cancelVKChange(CircuitType circuitType) external onlyOwner {
-        require(pendingVKChanges[circuitType].exists, "No pending VK change");
-        delete pendingVKChanges[circuitType];
-        emit VKChangeCancelled(circuitType);
-    }
-
-    /// @notice Check pending VK proposal status for a circuit.
-    function getPendingVKChange(CircuitType circuitType) external view returns (bool exists, uint256 proposedAt, uint256 executeAfter, uint256 icLength) {
-        PendingVK storage p = pendingVKChanges[circuitType];
-        if (!p.exists) return (false, 0, 0, 0);
-        return (true, p.proposedAt, p.proposedAt + VK_CHANGE_DELAY, p.IC.length);
     }
 
     function _applyVK(
@@ -323,6 +255,17 @@ contract UnifiedGroth16Verifier is Ownable, Groth16Verifier {
         uint[] memory public_inputs
     ) public view returns (bool) {
         return _baseVerify(circuitKeys[CircuitType.REPORT_RECORD], a, b, c, public_inputs);
+    }
+
+    /// @notice Verify a batch sensor proof (64-leaf Poseidon Merkle tree).
+    /// public_inputs = [merkleRoot_field, batchTimestamp]
+    function verifyBatchSensorProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[] memory public_inputs
+    ) public view returns (bool) {
+        return _baseVerify(circuitKeys[CircuitType.BATCH_SENSOR], a, b, c, public_inputs);
     }
 
     // --- Diagnostics: IC size and points ---

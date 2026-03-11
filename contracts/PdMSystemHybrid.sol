@@ -133,7 +133,20 @@ contract PdMSystemHybrid is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => TrainingRecord) public trainingRecords;
     mapping(uint256 => ReportRecord)   public reportRecords;
     mapping(uint256 => uint256[])      public machineFaultRecords;
-    
+
+    // --- BATCH STATE ---
+    struct BatchRecord {
+        bytes32 merkleRoot;
+        uint256 recordCount;
+        string  batchType;
+        address submitter;
+        uint256 timestamp;
+        bytes32 zkProofHash;
+    }
+    uint256 public batchCounter = 1;
+    mapping(uint256 => BatchRecord) public batchRecords;
+    mapping(bytes32 => bool) public usedMerkleRoots;
+
     // --- EVENTS ---
     event SensorDataProofSubmitted(
         uint256 indexed proofId,
@@ -176,6 +189,14 @@ contract PdMSystemHybrid is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed recordId,
         bytes32 reportCommitment,
         address creator
+    );
+
+    event BatchSubmitted(
+        uint256 indexed batchId,
+        bytes32 indexed merkleRoot,
+        uint256 recordCount,
+        string  batchType,
+        address submitter
     );
 
     event ZKVerifierUpdated(
@@ -621,6 +642,75 @@ contract PdMSystemHybrid is Ownable, Pausable, ReentrancyGuard {
         });
 
         emit ReportRecorded(recordId, reportCommitment, msg.sender);
+    }
+
+    // --- BATCH FUNCTIONS ---
+
+    /// @notice Submit a batch of sensor records proven by a single ZK proof.
+    /// @param merkleRoot     Poseidon Merkle root (= publicInputs[0] from snarkjs)
+    /// @param recordCount    Number of records included (1-1000)
+    /// @param batchType      "SENSOR" or "FAULT"
+    /// @param a,b,c          Groth16 proof components
+    /// @param publicInputs   [merkleRoot_field, batchTimestamp] — 2 elements
+    function submitBatch(
+        bytes32 merkleRoot,
+        uint256 recordCount,
+        string calldata batchType,
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[2] memory publicInputs
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        onlyAuthorizedNode(SENSOR_DATA_RESOURCE, AccessControlRegistry.AccessLevel.WRITE_LIMITED)
+        returns (uint256 batchId)
+    {
+        require(merkleRoot != bytes32(0),              "PdMBatch: Invalid root");
+        require(recordCount > 0 && recordCount <= 1000, "PdMBatch: Invalid count");
+        require(!usedMerkleRoots[merkleRoot],           "PdMBatch: Root already used");
+
+        // publicInputs[0] must equal the submitted merkleRoot
+        require(bytes32(publicInputs[0]) == merkleRoot, "PdMBatch: Root mismatch");
+
+        // batchTimestamp freshness (same 24h window as sensor proofs)
+        uint256 batchTs = publicInputs[1];
+        require(batchTs > block.timestamp - MAX_DATA_AGE, "PdMBatch: Stale timestamp");
+        require(batchTs <= block.timestamp + 300,          "PdMBatch: Future timestamp");
+
+        // ZK proof verification
+        uint[] memory inputs = _toUintArr(publicInputs);
+        require(
+            zkVerifier.verifyBatchSensorProof(a, b, c, inputs),
+            "PdMBatch: ZK proof invalid"
+        );
+
+        // Replay protection on proof
+        bytes32 zkProofHash = keccak256(abi.encodePacked(a, b, c, publicInputs));
+        require(!usedZkProofs[zkProofHash], "PdMBatch: ZK proof replay");
+        usedZkProofs[zkProofHash] = true;
+        usedMerkleRoots[merkleRoot] = true;
+
+        batchId = batchCounter++;
+        batchRecords[batchId] = BatchRecord({
+            merkleRoot:  merkleRoot,
+            recordCount: recordCount,
+            batchType:   batchType,
+            submitter:   msg.sender,
+            timestamp:   block.timestamp,
+            zkProofHash: zkProofHash
+        });
+
+        emit BatchSubmitted(batchId, merkleRoot, recordCount, batchType, msg.sender);
+    }
+
+    /// @dev Convert fixed-size uint[2] to dynamic uint[] for _baseVerify.
+    function _toUintArr(uint[2] memory fixed2) internal pure returns (uint[] memory) {
+        uint[] memory arr = new uint[](2);
+        arr[0] = fixed2[0];
+        arr[1] = fixed2[1];
+        return arr;
     }
 
     // --- VIEW FUNCTIONS ---

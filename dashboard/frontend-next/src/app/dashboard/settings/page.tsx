@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSettings } from '@/context/SettingsContext';
 import { useDashboard } from '@/components/DashboardShell';
 import { THEMES } from '@/config/themes';
+import { profilePhotoKey } from '@/components/Layout';
 import {
     User, Bell, Monitor, Wallet, Cpu, Shield, Save, RotateCcw,
-    Sun, Moon, Globe, Mail, Volume2, Clock, Database, FileDown
+    Sun, Moon, Globe, Mail, Volume2, Clock, Database, FileDown,
+    Camera, Trash2, Upload
 } from 'lucide-react';
 
 type SettingsTab = 'profile' | 'notifications' | 'display' | 'blockchain' | 'machines' | 'privacy';
@@ -36,9 +38,106 @@ const ToggleSwitch: React.FC<{ checked: boolean; onChange: (val: boolean) => voi
 function ProfilePanel() {
     const { settings, updateProfileSettings } = useSettings();
     const { user } = useDashboard();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const storageKey = user?.address ? profilePhotoKey(user.address) : null;
+    const [preview, setPreview] = useState<string | null>(
+        storageKey ? localStorage.getItem(storageKey) : null
+    );
+    const [uploading, setUploading] = useState(false);
+
+    const handleFile = (file: File) => {
+        if (!storageKey) return;
+        if (!file.type.startsWith('image/')) return;
+        setUploading(true);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target?.result as string;
+            localStorage.setItem(storageKey, dataUrl);
+            // Notify same-tab listeners (Layout.tsx UserAvatar)
+            window.dispatchEvent(new CustomEvent('profilePhotoChanged', {
+                detail: { key: storageKey, value: dataUrl }
+            }));
+            setPreview(dataUrl);
+            setUploading(false);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemove = () => {
+        if (!storageKey) return;
+        localStorage.removeItem(storageKey);
+        window.dispatchEvent(new CustomEvent('profilePhotoChanged', {
+            detail: { key: storageKey, value: null }
+        }));
+        setPreview(null);
+    };
+
     return (
         <div className="space-y-6">
             <h3 className="text-lg font-semibold text-white">Profile Settings</h3>
+
+            {/* ── Photo Upload ── */}
+            <div className="flex items-start gap-6 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02]">
+                {/* Avatar preview */}
+                <div className="relative flex-shrink-0 group">
+                    <div
+                        className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/[0.1] cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={preview ? {} : { background: 'linear-gradient(145deg, #c8d3db 0%, #a9b8c2 100%)' }}
+                    >
+                        {preview ? (
+                            <img src={preview} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full p-3">
+                                <circle cx="50" cy="35" r="16" fill="#1a2535" />
+                                <path d="M15 85 C15 60 85 60 85 85" fill="#1a2535" />
+                            </svg>
+                        )}
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                            <Camera size={20} className="text-white" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Controls */}
+                <div className="flex-1">
+                    <p className="text-sm font-semibold text-white mb-1">Profile Photo</p>
+                    <p className="text-xs text-white/40 mb-4">JPG, PNG or WebP. Max 5 MB. Stored locally on this device.</p>
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 text-[var(--accent-highlight)] text-xs font-semibold hover:bg-[var(--accent-primary)]/20 transition-all disabled:opacity-50"
+                        >
+                            <Upload size={13} />
+                            {uploading ? 'Uploading…' : 'Upload Photo'}
+                        </button>
+                        {preview && (
+                            <button
+                                onClick={handleRemove}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-all"
+                            >
+                                <Trash2 size={13} /> Remove
+                            </button>
+                        )}
+                    </div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFile(file);
+                            e.target.value = '';
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* ── Other fields ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label htmlFor="input-display-name" className="block text-sm font-medium text-white/60 mb-2">Display Name</label>

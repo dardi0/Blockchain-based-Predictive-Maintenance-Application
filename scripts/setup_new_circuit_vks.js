@@ -28,6 +28,7 @@ const CircuitType = {
     FAULT_RECORD:     4,
     TRAINING_RECORD:  5,
     REPORT_RECORD:    6,
+    BATCH_SENSOR:     7,
 };
 
 // Devreye karşılık gelen zkey dosyaları
@@ -35,6 +36,7 @@ const CIRCUIT_ZKEYS = {
     [CircuitType.FAULT_RECORD]:    'fault_record_proof.zkey',
     [CircuitType.TRAINING_RECORD]: 'training_record_proof.zkey',
     [CircuitType.REPORT_RECORD]:   'report_record_proof.zkey',
+    [CircuitType.BATCH_SENSOR]:    'batch_sensor_proof.zkey',
 };
 
 const TEMP_DIR = path.resolve(__dirname, '../temp/zk_proofs');

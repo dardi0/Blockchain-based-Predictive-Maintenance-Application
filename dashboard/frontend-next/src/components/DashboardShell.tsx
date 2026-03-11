@@ -163,6 +163,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     const { data, user, loading, notifications, toasts } = state;
     const seenIds = React.useRef<Set<number>>(new Set());
     const isFirstLoad = React.useRef(true);
+    const toastTimerIds = React.useRef<ReturnType<typeof setTimeout>[]>([]);
     const router = useRouter();
 
     const { settings } = useSettings();
@@ -235,9 +236,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                             dispatch((prev: any) => ({ toasts: [...prev.toasts, ...newUnread] }));
 
                             newUnread.forEach((n: any) => {
-                                setTimeout(() => {
+                                const tid = setTimeout(() => {
                                     dispatch((prev: any) => ({ toasts: prev.toasts.filter((t: any) => t.id !== n.id) }));
                                 }, 5000);
+                                toastTimerIds.current.push(tid);
                             });
                         }
                     }
@@ -286,6 +288,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         return () => {
             clearInterval(dataInterval);
             clearInterval(notifInterval);
+            toastTimerIds.current.forEach(id => clearTimeout(id));
+            toastTimerIds.current = [];
         };
     }, [user, refreshInterval]);
 

@@ -13,6 +13,7 @@ import { CalculationInfoModal } from './dashboard/CalculationInfoModal';
 import { NotificationToast } from './dashboard/NotificationToast';
 import { KPICards } from './dashboard/KPICards';
 import { RULCards } from './dashboard/RULCards';
+import { BatchStatusWidget } from './dashboard/BatchStatusWidget';
 import { useDashboardLogic } from './hooks/useDashboardLogic';
 
 // Lazy-load heavy chart components (recharts)
@@ -107,6 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ machines }) => {
                 {/* Right Column */}
                 <div className="space-y-6">
                     <AttentionPanel machines={attentionMachines} onMachineClick={handleMachineClick} />
+                    <BatchStatusWidget />
                     <ActivityFeed activities={activities} />
                 </div>
             </div>

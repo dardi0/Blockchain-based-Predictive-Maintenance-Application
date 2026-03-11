@@ -144,8 +144,8 @@ const EventsTable: React.FC<any> = ({ events }) => (
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
-                        {events.map((evt: any) => (
-                            <tr key={evt.tx_hash} className="hover:bg-white/[0.03] transition-colors">
+                        {events.map((evt: any, index: number) => (
+                            <tr key={`${evt.type}-${evt.tx_hash}-${index}`} className="hover:bg-white/[0.03] transition-colors">
                                 <td className="px-6 py-4">
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getEventBadge(evt.type)}`}>{evt.type}</span>
                                 </td>

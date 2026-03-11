@@ -15,10 +15,18 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
 @router.get("")
-def get_notifications(x_wallet_address: str = Header(...), limit: int = 50):
+def get_notifications(x_wallet_address: str = Header(..., alias="x-wallet-address"), limit: int = 50):
     """Kullanıcının son bildirimlerini getir"""
     db = get_db_manager()
     return db.get_recent_notifications(x_wallet_address, limit)
+
+
+@router.post("/read-all")
+def mark_all_notifications_read(x_wallet_address: str = Header(..., alias="x-wallet-address")):
+    """Kullanıcının tüm bildirimlerini okundu olarak işaretle"""
+    db = get_db_manager()
+    success = db.mark_all_notifications_read(x_wallet_address)
+    return {"success": success}
 
 
 @router.post("/{notif_id}/read")

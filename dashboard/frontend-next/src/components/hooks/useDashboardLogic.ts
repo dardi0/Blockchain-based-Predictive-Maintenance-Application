@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Machine, MachineStatus, KPIData, RULEstimate } from '../../types';
 import { useDashboard } from '../DashboardShell';
 import { api } from '../../services/api';
@@ -35,9 +35,25 @@ export function useDashboardLogic(machines: Machine[]) {
     const router = useRouter();
     const [state, setState] = useState<DashboardState>(INITIAL_STATE);
 
+    const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const showNotification = useCallback((message: string, type: 'success' | 'error') => {
+        if (notifTimerRef.current !== null) {
+            clearTimeout(notifTimerRef.current);
+        }
         setState(prev => ({ ...prev, notification: { message, type } }));
-        setTimeout(() => setState(prev => ({ ...prev, notification: null })), 3000);
+        notifTimerRef.current = setTimeout(() => {
+            notifTimerRef.current = null;
+            setState(prev => ({ ...prev, notification: null }));
+        }, 3000);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (notifTimerRef.current !== null) {
+                clearTimeout(notifTimerRef.current);
+            }
+        };
     }, []);
 
     // Fetch activity feed

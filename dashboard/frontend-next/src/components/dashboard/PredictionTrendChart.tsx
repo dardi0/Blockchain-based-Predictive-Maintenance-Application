@@ -34,7 +34,7 @@ const LazyImpl = dynamic(() =>
                                 contentStyle={{ backgroundColor: 'rgba(10, 16, 32, 0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px' }}
                                 labelStyle={{ color: 'rgba(255,255,255,0.4)' }}
                                 itemStyle={{ color: '#fff' }}
-                                formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'Avg Probability']}
+                                formatter={(value: number | undefined) => [value !== undefined ? `${(value * 100).toFixed(1)}%` : '—', 'Avg Probability']}
                             />
                             <Area type="monotone" dataKey="avg_probability" stroke="var(--accent-primary)" strokeWidth={3} fill="url(#colorProb)" />
                         </AreaChart>

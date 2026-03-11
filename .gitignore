@@ -3,7 +3,6 @@
 # ============================================
 
 # ================== SECURITY ==================
-# NEVER commit these files!
 .env
 .env.local
 .env.development
@@ -13,8 +12,6 @@
 *.key
 secrets/
 credentials/
-
-# Private keys and wallets
 *.keystore
 *.json.enc
 wallet.json
@@ -22,19 +19,6 @@ private_key*
 *_private_key*
 *secret*
 *.secret
-
-# ================== NODE.JS ==================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.npm
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
 # ================== PYTHON ==================
 __pycache__/
@@ -61,18 +45,28 @@ venv/
 ENV/
 env/
 .venv/
+.venv_backup/
+
+# ================== NODE.JS ==================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # ================== NEXT.JS ==================
 .next/
 out/
 .vercel
-
-# ================== BUILD ==================
-build/
-dist/
-*.build/
-coverage/
-.nyc_output/
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
 
 # ================== HARDHAT / BLOCKCHAIN ==================
 cache/
@@ -81,10 +75,27 @@ typechain/
 typechain-types/
 deployments/localhost/
 
-# zkSync-specific (CRITICAL - build artifacts)
+# zkSync build artifacts
 artifacts-zk/
 cache-zk/
 deployments-zk/
+
+# Hardhat Ignition local
+ignition/deployments/chain-1337/
+
+# ================== CIRCOM / ZK ==================
+circom/build/
+*.r1cs
+*.sym
+*.ptau
+*.zkey
+*.wtns
+*.wasm
+*_js/
+proof.json
+public.json
+*_witness.json
+*witness*.json
 
 # ================== DATABASE ==================
 *.db
@@ -92,12 +103,11 @@ deployments-zk/
 *.sqlite3
 PdMDatabase/
 
-# ================== TEMP FILES ==================
-temp/
-tmp/
-*.tmp
-*.temp
-compile_output.txt
+# ================== LOGS ==================
+logs/
+*.log
+automation_listener.log
+automation_listener.log.*
 
 # ================== IDE ==================
 .idea/
@@ -109,10 +119,6 @@ compile_output.txt
 .classpath
 .settings/
 
-# ================== CLAUDE CODE ==================
-.claude/settings.local.json
-.agents/
-
 # ================== OS ==================
 .DS_Store
 .DS_Store?
@@ -122,86 +128,43 @@ compile_output.txt
 ehthumbs.db
 Thumbs.db
 
-# ================== LOGS ==================
-logs/
-*.log
-automation_listener.log
-
-# ================== MISC ==================
-*.tsbuildinfo
-next-env.d.ts
-.turbo/
-
-# ================== CIRCOM/ZK ==================
-# Circuit build outputs
-circom/build/
-*.r1cs
-*.sym
-
-# ZK Proving/Verification (CRITICAL - large files)
-*.ptau
-*.zkey
-*.wtns
-proof.json
-public.json
-
-# Witness files (private data!)
-*_witness.json
-*witness*.json
-
-# WASM files (can be regenerated)
-*.wasm
-*_js/
-
-# ================== EXCLUDED DUMPS ==================
-.venv_backup/
-failure.txt
-zksync_api_result.txt
-tracked_files.txt
-
-# ================== BINARY TOOLS ==================
-tools/*.exe
-tools/*.bin
-
-# ================== DATASETS ==================
-*.csv
-ai4i2020.csv
-
-# ================== FLAT/GENERATED SOLIDITY ==================
-*_flat.sol
-contracts/flat/
-
-# ================== LOCAL SCRIPTS ==================
-*.bat
-patch_*.js
-explore_*.py
-
-# ================== DEPLOYMENT DATA DUMPS ==================
-deployment_data_*.json
-
-# ================== HARDHAT IGNITION LOCAL ==================
-ignition/deployments/chain-1337/
-
-# ================== PROJECT SPECIFIC EXCLUSIONS ==================
-# Datasets and results
-"NASA Turbofan/"
-"Performans_Metrikleri/"
-
-# Agent/IDE Metadata
+# ================== CLAUDE CODE / AI TOOLS ==================
+.claude/
 .codex/
 .opencode/
-.claude/
 .agents/
 .agent/
 _agents/
 _agent/
 brain/
 
-# Distribution/Backup
-.venv_backup/
+# ================== GENERATED / FLAT SOLIDITY ==================
+*_flat.sol
+contracts/flat/
+
+# ================== BINARY TOOLS ==================
+tools/*.exe
+tools/*.bin
+*.bin
+
+# ================== DATASETS ==================
+*.csv
+ai4i2020.csv
+NASA Turbofan/
+Performans_Metrikleri/
+
+# ================== TEMP / MISC ==================
+temp/
+tmp/
+*.tmp
+*.temp
+compile_output.txt
+deployment_data_*.json
+patch_*.js
+explore_*.py
+*.bat
+failure.txt
 tracked_files.txt
 zksync_api_result.txt
-failure.txt
-automation_listener.log
-automation_listener.log.*
-*.bin
+coverage/
+.nyc_output/

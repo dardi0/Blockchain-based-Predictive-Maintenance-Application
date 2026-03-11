@@ -313,6 +313,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
             nodeAddress: nodeAddress,
             groupId: groupId,
             status: requireApprovalForAccess ? NodeStatus.INACTIVE : NodeStatus.ACTIVE,
+            previousStatus: NodeStatus.INACTIVE,
             accessLevel: accessLevel,
             owner: msg.sender,
             createdAt: block.timestamp,
@@ -597,7 +598,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
      */
     function approveAccessRequest(
         bytes32 requestId
-    ) external whenNotPaused onlyRole(MANAGER_ROLE) {
+    ) external whenNotPaused nonReentrant onlyRole(MANAGER_ROLE) {
         AccessRequest storage request = accessRequests[requestId];
         require(request.requestId != bytes32(0), "AccessControl: Request does not exist");
         require(!request.isApproved, "AccessControl: Request already approved");
@@ -653,7 +654,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
     function revokeAccess(
         bytes32 nodeId,
         bytes32 targetResource
-    ) external whenNotPaused onlyValidNode(nodeId) onlyRole(MANAGER_ROLE) {
+    ) external whenNotPaused nonReentrant onlyValidNode(nodeId) onlyRole(MANAGER_ROLE) {
         nodePermissions[nodeId][targetResource] = false;
 
         // Audit log oluştur
@@ -724,7 +725,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
         bytes32 nodeId,
         bytes32 targetResource,
         string calldata reason
-    ) external onlyRole(ADMIN_ROLE) {
+    ) external nonReentrant onlyRole(ADMIN_ROLE) {
         require(nodeExists[nodeId], "AccessControl: Node does not exist");
 
         if (multiSigThreshold <= 1) {
@@ -1070,7 +1071,7 @@ contract AccessControlRegistry is Ownable, Pausable, ReentrancyGuard {
      */
     function _autoGrantPermissions(bytes32 nodeId, bytes32 groupId) internal {
         GroupConfig storage config = nodeGroups[groupId];
-        require(config.isActive || !requireApprovalForAccess, "AccessControl: Group is not active");
+        require(config.isActive, "AccessControl: Group is not active");
         
         address nodeOwner = nodes[nodeId].owner;
 

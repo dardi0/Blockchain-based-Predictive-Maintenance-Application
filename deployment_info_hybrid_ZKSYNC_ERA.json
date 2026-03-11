@@ -2,8 +2,8 @@
   "network": "ZKSYNC_ERA",
   "chainId": 300,
   "deployer": "0xD7c504d02A9265708b8400aFbde149c6677C5869",
-  "timestamp": "2026-02-23T15:40:48.022Z",
-  "deployment_time_seconds": 57.53,
+  "timestamp": "2026-03-06T13:07:08.488Z",
+  "deployment_time_seconds": 104.81,
   "system_type": "hybrid",
   "features": {
     "offChainStorage": true,
@@ -15,22 +15,22 @@
   "contracts": {
     "AccessControlRegistry": {
       "name": "AccessControlRegistry",
-      "address": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
+      "address": "0x55cDaa629B63d3A65f3EA0592EbebCE119e05B05",
       "purpose": "Merkezi erişim kontrolü ve rol yönetimi"
     },
     "UnifiedGroth16Verifier": {
       "name": "UnifiedGroth16Verifier",
-      "address": "0xD35C56E1b0a3e343506fae113B3800e9FeB27826",
+      "address": "0x5F81F1C6e7a69fe271d1EFaEDd092036AE3356A5",
       "purpose": "ZK-SNARK proof doğrulama motoru",
       "sensorVKSet": true
     },
     "PdMSystemHybrid": {
       "name": "PdMSystemHybrid",
-      "address": "0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B",
+      "address": "0x13a74Cb39A5b63e409ad9fA04924B44d75B4d137",
       "purpose": "Ana hibrit PDM sistemi",
       "dependencies": {
-        "accessRegistry": "0x54414105CAc169bBEA3Cf21557844B030B79295a",
-        "zkVerifier": "0xD35C56E1b0a3e343506fae113B3800e9FeB27826"
+        "accessRegistry": "0x55cDaa629B63d3A65f3EA0592EbebCE119e05B05",
+        "zkVerifier": "0x5F81F1C6e7a69fe271d1EFaEDd092036AE3356A5"
       },
       "newResourcesGranted": true
     }
@@ -46,13 +46,13 @@
     "summary": "Verification details removed for security."
   },
   "explorer": {
-    "accessRegistry": "https://sepolia.explorer.zksync.io/address/0x54414105CAc169bBEA3Cf21557844B030B79295a",
-    "verifier": "https://sepolia.explorer.zksync.io/address/0xD35C56E1b0a3e343506fae113B3800e9FeB27826",
-    "pdmSystem": "https://sepolia.explorer.zksync.io/address/0x5068b39b1631447D2b79E5Dbeb68CF898eAcaA6B"
+    "accessRegistry": "https://sepolia.explorer.zksync.io/address/0x55cDaa629B63d3A65f3EA0592EbebCE119e05B05",
+    "verifier": "https://sepolia.explorer.zksync.io/address/0x5F81F1C6e7a69fe271d1EFaEDd092036AE3356A5",
+    "pdmSystem": "https://sepolia.explorer.zksync.io/address/0x13a74Cb39A5b63e409ad9fA04924B44d75B4d137"
   },
   "smartAccounts": {
-    "factory": "0x79c0434b5E260ce0f8D30bE69cf6007Cd68778CB",
-    "engineer": "0x6be012cb62679CA942F4d1FA66F34d49Be9643C7",
-    "operator": "0x1b506783477E93045070b5FA5717FAE7212d5E1f"
+    "factory": "0x0580138a967c5edDa26f1cc6237757161DFf10eA",
+    "engineer": "0x654588832EE2B88d8D9fDE243d7550CaeD3B0D18",
+    "operator": "0x3D9a33fF05DBb3A0B4E51D89847F248dA3A984c0"
   }
 }

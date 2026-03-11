@@ -43,6 +43,7 @@ class ZKProofGenerator:
         self.fault_circuit = self.circuits_dir / "fault_record_proof.circom"
         self.training_circuit = self.circuits_dir / "training_record_proof.circom"
         self.report_circuit = self.circuits_dir / "report_record_proof.circom"
+        self.batch_circuit = self.circuits_dir / "batch_sensor_proof.circom"
 
         self._create_circuits()
     
@@ -251,6 +252,18 @@ component main = Main();
     
     def _compile_circuit(self, circuit_path: Path) -> bool:
         """Circuit'i derle (Circom 2.x uyumlu)"""
+        # Skip recompilation if outputs are already newer than the circuit source.
+        # This prevents _perform_trusted_setup from seeing a newer r1cs and
+        # regenerating the zkey (which would make the on-chain VK stale).
+        r1cs_out = self.temp_dir / f"{circuit_path.stem}.r1cs"
+        wasm_out  = self.temp_dir / f"{circuit_path.stem}_js" / f"{circuit_path.stem}.wasm"
+        if r1cs_out.exists() and wasm_out.exists():
+            try:
+                if r1cs_out.stat().st_mtime >= circuit_path.stat().st_mtime:
+                    return True  # Already compiled; circuit source unchanged
+            except Exception:
+                pass
+
         try:
             # Prefer bundled Circom if available
             circom_exe = str((Path(__file__).resolve().parent / "tools" / "circom.exe"))
@@ -462,12 +475,47 @@ component main = Main();
                 with open(public_file, 'r', encoding='utf-8') as f:
                     public_inputs = json.load(f)
 
-                # commitmentHash artık gerekmiyor, zaten public inputs'ta var
-                # logger.info(f"✅ ZK proof generated: {circuit_name}")
+                # Lokal doğrulama: zincire göndermeden önce snarkjs verify ile kontrol et.
+                # Fail → zkey uyumsuz; pass → sorun varsa G2 formatlamadadır.
+                vk_file = self.temp_dir / f"{circuit_name.replace('_proof', '')}_verification_key.json"
+                if not vk_file.exists():
+                    # vk.json yoksa zkey'den export et
+                    export_cmd = self._build_snarkjs_command(
+                        "zkey", "export", "verificationkey", str(zkey_file), str(vk_file)
+                    )
+                    if export_cmd:
+                        subprocess.run(
+                            export_cmd, capture_output=True, text=True,
+                            timeout=60, check=False, creationflags=self._no_window_flag
+                        )
+
+                if vk_file.exists():
+                    verify_cmd = self._build_snarkjs_command(
+                        "groth16", "verify",
+                        str(vk_file), str(public_file), str(proof_file)
+                    )
+                    if verify_cmd:
+                        vr = subprocess.run(
+                            verify_cmd, capture_output=True, text=True,
+                            timeout=30, check=False, creationflags=self._no_window_flag
+                        )
+                        verify_output = (vr.stdout + vr.stderr).strip()
+                        if vr.returncode != 0 or "OK" not in verify_output:
+                            logger.error(
+                                f"❌ Lokal proof doğrulama BAŞARISIZ [{circuit_name}]: {verify_output} "
+                                f"— zkey/r1cs/wasm uyumsuz, zkey yeniden üretilmeli",
+                                extra={"event_type": "local_verify_failed",
+                                       "circuit_name": circuit_name},
+                            )
+                            return None
+                        logger.debug(f"✅ Lokal proof doğrulama geçti [{circuit_name}]")
+
                 return {'proof': proof_data, 'publicInputs': public_inputs}
             else:
+                # snarkjs sometimes writes the real error to stdout, not stderr
+                error_output = result.stderr.strip() or result.stdout.strip() or "(no output)"
                 logger.error(
-                    f"❌ Proof generation failed: {result.stderr.strip()}",
+                    f"❌ Proof generation failed [{circuit_name}] rc={result.returncode}: {error_output}",
                     extra={"event_type": "zk_proof_failed",
                            "circuit_name": circuit_name},
                 )
@@ -930,6 +978,128 @@ component main = Main();
 
         except Exception as e:
             logger.error(f"Report record proof generation error: {e}")
+            return None
+
+    # ──────────────────────────────────────────────────────────────────────
+    # BATCH SENSOR PROOF
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _poseidon_merkle_root(self, leaves: list, batch_timestamp: int) -> int:
+        """Compute Poseidon Merkle root for exactly 64 leaves + timestamp binding.
+
+        Algorithm mirrors the circuit:
+          Level 1-6: Poseidon(pairs) → 64 leaves → 1 pure root
+          Final:     Poseidon(pure_root, batchTimestamp) → merkleRoot
+
+        All hashes are computed in a single Node.js subprocess call for speed.
+        """
+        leaves_str = [str(leaf) for leaf in leaves]
+        hash_cmd = f"""
+const circomlibjs = require("circomlibjs");
+(async () => {{
+    const poseidon = await circomlibjs.buildPoseidon();
+    const F = poseidon.F;
+    let current = {json.dumps(leaves_str)}.map(BigInt);
+    while (current.length > 1) {{
+        const next = [];
+        for (let i = 0; i < current.length; i += 2) {{
+            const h = poseidon([current[i], current[i + 1]]);
+            next.push(BigInt(F.toString(h)));
+        }}
+        current = next;
+    }}
+    const pureRoot = current[0];
+    const finalHash = poseidon([pureRoot, BigInt("{batch_timestamp}")]);
+    console.log(F.toString(finalHash));
+}})();
+"""
+        result = subprocess.run(
+            ["node", "-e", hash_cmd],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True
+        )
+        return int(result.stdout.strip())
+
+    def generate_batch_proof(self, data_hashes: list, batch_timestamp: int) -> Optional[Dict]:
+        """Toplu sensör kaydı için ZK batch proof üret.
+
+        Args:
+            data_hashes:     SHA256 hex string listesi (max 64; az ise 0 ile padlenir)
+            batch_timestamp: Unix timestamp (int)
+
+        Returns:
+            proof_data dict veya None (hata durumunda)
+            publicInputs[0] = merkleRoot (int)
+            publicInputs[1] = batchTimestamp (int)
+        """
+        BN254_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+        try:
+            # Her data_hash'i BN254 field elemanına dönüştür
+            leaves = []
+            for h in data_hashes:
+                clean = h.replace('0x', '').replace('0X', '')
+                leaves.append(int(clean, 16) % BN254_PRIME)
+
+            # 64'e pad et (sıfır yapraklarla)
+            while len(leaves) < 64:
+                leaves.append(0)
+            leaves = leaves[:64]
+
+            # Merkle root'u hesapla (circuit ile aynı algoritma)
+            merkle_root = self._poseidon_merkle_root(leaves, batch_timestamp)
+
+            # Circuit input dosyası
+            circuit_inputs = {
+                'leaves': [str(leaf) for leaf in leaves],
+                'batchTimestamp': str(batch_timestamp),
+            }
+
+            # Compile → trusted setup → witness → proof
+            if not self._compile_circuit(self.batch_circuit):
+                logger.error("batch_sensor_proof circuit derleme basarisiz")
+                return None
+            if not self._perform_trusted_setup('batch_sensor_proof'):
+                logger.error("batch_sensor_proof trusted setup basarisiz")
+                return None
+            witness_file = self._calculate_witness('batch_sensor_proof', circuit_inputs)
+            if not witness_file:
+                logger.error("batch_sensor_proof witness hesaplama basarisiz")
+                return None
+
+            proof_data = self._generate_proof_snarkjs('batch_sensor_proof', witness_file)
+            if not proof_data:
+                # prove veya lokal verify başarısız — uyumsuz zkey.
+                # Zkey'i sil, yeniden trusted setup yap, lokal verify dahil tek retry.
+                zkey_path = self.temp_dir / 'batch_sensor_proof.zkey'
+                vk_path = self.temp_dir / 'batch_sensor_verification_key.json'
+                for p in (zkey_path, vk_path):
+                    if p.exists():
+                        p.unlink()
+                logger.warning(
+                    "batch_sensor_proof: prove/verify başarısız — zkey+vk silindi, "
+                    "yeniden trusted setup + prove (tek retry)"
+                )
+                if self._perform_trusted_setup('batch_sensor_proof'):
+                    witness_file2 = self._calculate_witness('batch_sensor_proof', circuit_inputs)
+                    if witness_file2:
+                        proof_data = self._generate_proof_snarkjs('batch_sensor_proof', witness_file2)
+                if not proof_data:
+                    logger.error("batch_sensor_proof prove/verify retry sonrası da başarısız")
+                    return None
+
+            # publicInputs'in merkle_root ile eşleştiğini doğrula
+            circuit_root = int(proof_data['publicInputs'][0])
+            if circuit_root != merkle_root:
+                logger.warning(
+                    f"Merkle root uyumsuzlugu: Python={merkle_root}, Circuit={circuit_root}"
+                )
+
+            return proof_data
+
+        except Exception as e:
+            logger.error(f"generate_batch_proof error: {e}")
             return None
 
 

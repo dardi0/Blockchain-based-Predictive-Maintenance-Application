@@ -34,8 +34,8 @@ class SensorData(BaseModel):
     air_temp_k: float = Field(default=298.0, ge=250.0, le=350.0)
     process_temp_k: float = Field(default=308.0, ge=250.0, le=400.0)
     rotational_speed_rpm: int = Field(default=1500, ge=0, le=5000)
-    torque_nm: float = Field(default=40.0, ge=0.0, le=100.0)
-    tool_wear_min: float = Field(default=0.0, ge=0.0, le=500.0)
+    torque_nm: float = Field(default=40.0, ge=0.0, le=250.0)
+    tool_wear_min: float = Field(default=0.0, ge=0.0, le=600.0)
     machine_type: str = Field(default="M")
     id: Optional[int] = Field(default=None)
 
@@ -218,7 +218,11 @@ def get_transaction_details(tx_hash: str):
 
 @router.get("/ledger")
 def get_blockchain_ledger(limit: int = 500):
-    """Blockchain'e kaydedilmiş işlemleri getir"""
+    """Blockchain'e kaydedilmiş işlemleri getir.
+
+    verified = ZK batch proof TX'i zincire yazıldı mı (batch_submissions.tx_hash IS NOT NULL).
+    txHashFull = ZK batch proof TX hash'i (Chainlink oracle TX değil).
+    """
     db = get_db_manager()
 
     try:
@@ -228,7 +232,16 @@ def get_blockchain_ledger(limit: int = 500):
 
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT %s", (limit,))
+                cur.execute("""
+                    SELECT s.*,
+                           bs.tx_hash      AS batch_tx_hash,
+                           bs.status       AS batch_status,
+                           bs.record_count AS batch_record_count
+                    FROM sensor_data s
+                    LEFT JOIN batch_submissions bs ON s.batch_id = bs.id
+                    ORDER BY s.timestamp DESC
+                    LIMIT %s
+                """, (limit,))
                 columns = [desc[0] for desc in cur.description] if cur.description else []
                 rows = [dict(zip(columns, row)) for row in cur.fetchall()]
         finally:
@@ -236,19 +249,25 @@ def get_blockchain_ledger(limit: int = 500):
 
         records = []
         for r in rows:
+            batch_tx      = r.get('batch_tx_hash')   # ZK batch proof TX
+            is_zk_verified = bool(batch_tx)           # True yalnızca batch zincire yazıldığında
+            in_batch       = r.get('batch_id') is not None
 
-            action = "Sensor Data Log"
-            prediction_val = r.get('prediction')
+            prediction_val      = r.get('prediction')
             has_prediction_proof = bool(r.get('prediction_tx_hash'))
 
-            if has_prediction_proof:
+            if is_zk_verified:
+                action = "ZK Batch Verified"
+            elif in_batch:
+                action = "In Batch (Pending TX)"
+            elif has_prediction_proof:
                 action = "Prediction Proof Submitted"
             elif prediction_val == 1:
                 action = "Failure Detected"
             elif prediction_val == 0:
                 action = "Normal Operation"
-            elif r.get('proof_id'):
-                action = "Sensor Proof Verified"
+            else:
+                action = "Sensor Data Log"
 
             ts = r.get('timestamp')
             ts_iso = ts
@@ -272,10 +291,12 @@ def get_blockchain_ledger(limit: int = 500):
                 "action": action,
                 "operatorAddress": r.get('recorded_by') or "Unknown",
                 "timestamp": ts_iso,
-                "verified": bool(r.get('blockchain_success')),
-                "txHashFull": r.get('blockchain_tx_hash'),
+                "verified": is_zk_verified,
+                "txHashFull": batch_tx,
                 "sensorProofId": r.get('proof_id'),
-                "predictionInfo": prediction_info
+                "predictionInfo": prediction_info,
+                "batchId": r.get('batch_id'),
+                "batchRecordCount": r.get('batch_record_count'),
             })
 
         return {"records": records}
@@ -529,7 +550,11 @@ def submit_prediction_proof(
 
         sensor_data_id = record['id']
 
-        result = handler.submit_prediction_hybrid_v2(prediction_data, sensor_data_id)
+        result = handler.submit_prediction_hybrid_v2(
+            prediction_data, sensor_data_id,
+            actor_role=user.get('role', 'ENGINEER'),
+            recorded_by=user.get('address'),
+        )
 
         if result.get('success'):
             tx_hash = result.get('tx_hash')

@@ -13,11 +13,14 @@ import logging
 import numpy as np
 import pandas as pd
 import base64
+from datetime import time as _time
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field, field_validator
 from eth_account import Account
 from eth_account.messages import encode_defunct
+
+_MIDNIGHT = _time(0, 0, 0)
 
 from .dependencies import get_db_manager
 
@@ -49,8 +52,8 @@ class SensorData(BaseModel):
     air_temp_k: float = Field(default=298.0, ge=250.0, le=350.0)
     process_temp_k: float = Field(default=308.0, ge=250.0, le=400.0)
     rotational_speed_rpm: int = Field(default=1500, ge=0, le=5000)
-    torque_nm: float = Field(default=40.0, ge=0.0, le=100.0)
-    tool_wear_min: float = Field(default=0.0, ge=0.0, le=500.0)
+    torque_nm: float = Field(default=40.0, ge=0.0, le=250.0)
+    tool_wear_min: float = Field(default=0.0, ge=0.0, le=600.0)
     machine_type: str = Field(default="M")
     id: Optional[int] = Field(default=None)
 
@@ -118,31 +121,37 @@ def predict_failure(
     db = get_db_manager()
     user_address = 'Unknown'
 
-    # 1. İmza Doğrulama (Opsiyonel)
+    # 1. İmza Doğrulama (sağlanırsa zorunlu rol kontrolü yapılır)
     if x_signature and x_message:
+        verified_role = None
         try:
             decoded_message = base64.b64decode(x_message).decode('utf-8')
             msg_encoded = encode_defunct(text=decoded_message)
             recovered_address = Account.recover_message(msg_encoded, signature=x_signature)
 
             user = db.get_user(recovered_address)
-            if not user or user['role'] not in ['ENGINEER', 'OWNER', 'MANAGER']:
-                print(f"⚠️ Prediction requested by unauthorized role: {user['role'] if user else 'Unknown'}")
-
-            print(f"✅ Prediction signature verified for {recovered_address}")
+            if user:
+                verified_role = user.get('role')
             user_address = recovered_address
+            logger.info(f"Prediction signature verified for {recovered_address}")
 
         except Exception as e:
-            print(f"❌ Signature verification failed in predict: {e}")
+            logger.warning(f"Signature verification failed in predict: {e}")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+
+        # Enforce role — reject unauthorized users when signature is explicitly provided
+        if verified_role not in ['ENGINEER', 'OWNER', 'MANAGER']:
+            logger.warning(f"Prediction denied — unauthorized role: {verified_role} for {user_address}")
+            raise HTTPException(status_code=403, detail="Unauthorized role for prediction")
+    else:
+        logger.info("Unauthenticated prediction request from unknown client")
 
     if not _model or not _scaler:
         raise HTTPException(status_code=503, detail="Model henüz yüklenmedi.")
 
     try:
-        machine_type = data.machine_type.upper()
-        type_H = 1 if machine_type == 'H' else 0
-        type_L = 1 if machine_type == 'L' else 0
-        type_M = 1 if machine_type == 'M' else 0
+        machine_type = data.machine_type  # validator already normalises to uppercase
+        one_hot = {t: int(machine_type == t) for t in ('H', 'L', 'M')}
 
         input_data = np.array([[
             data.air_temp_k,
@@ -150,9 +159,9 @@ def predict_failure(
             data.rotational_speed_rpm,
             data.torque_nm,
             data.tool_wear_min,
-            type_H,
-            type_L,
-            type_M
+            one_hot['H'],
+            one_hot['L'],
+            one_hot['M'],
         ]])
 
         # Kural tabanlı analiz
@@ -213,45 +222,24 @@ def predict_failure(
                 }
                 db.save_sensor_data(sensor_dict)
 
-        # Arıza tespit edildi → ZK proof ile blockchain'e kaydet
-        fault_bc_tx_hash = None
+        # Arıza tespit edildi → batch kuyruğuna ekle (BatchSender halleder)
+        fault_enqueued = False
         fault_bc_error = None
         if final_prediction == 1:
             try:
-                from routes.dependencies import get_blockchain_handler
-                bc = get_blockchain_handler()
-                if bc and bc.is_ready():
-                    bc_result = bc.submit_fault_record(
-                        machine_id=machine_id or 0,
-                        data_proof_id=0,
-                        prediction=int(final_prediction),
-                        prediction_prob=float(prediction_prob),
-                        recorded_by=user_address if user_address != 'Unknown' else None
-                    )
-                    if bc_result.get('success'):
-                        fault_bc_tx_hash = bc_result.get('tx_hash')
-                        logger.info(
-                            "Arıza ZK proof ile blockchain'e kaydedildi",
-                            extra={"event_type": "zk_proof_success",
-                                   "circuit_type": "FAULT_RECORD",
-                                   "machine_id": machine_id,
-                                   "tx_hash": fault_bc_tx_hash},
-                        )
-                    else:
-                        fault_bc_error = bc_result.get('error')
-                        logger.warning(
-                            f"Arıza blockchain kaydı başarısız: {fault_bc_error}",
-                            extra={"event_type": "zk_proof_failed",
-                                   "circuit_type": "FAULT_RECORD",
-                                   "machine_id": machine_id},
-                        )
+                _recorded_by = user_address if user_address != 'Unknown' else None
+                db.enqueue_fault_for_batch(
+                    machine_id=machine_id or 0,
+                    prediction=int(final_prediction),
+                    prediction_prob=float(prediction_prob),
+                    recorded_by=_recorded_by,
+                )
+                fault_enqueued = True
             except Exception as bc_err:
                 fault_bc_error = str(bc_err)
                 logger.error(
-                    f"Arıza blockchain kaydı exception: {bc_err}",
-                    extra={"event_type": "zk_proof_failed",
-                           "circuit_type": "FAULT_RECORD",
-                           "machine_id": machine_id},
+                    f"Arıza batch kuyruğuna eklenemedi: {bc_err}",
+                    extra={"event_type": "fault_enqueue_failed", "machine_id": machine_id},
                 )
 
         return {
@@ -264,8 +252,7 @@ def predict_failure(
                 "failure_risks": failure_risks if failure_risks else "Belirgin bir risk bulunamadı."
             },
             "blockchain": {
-                "submitted": fault_bc_tx_hash is not None,
-                "tx_hash": fault_bc_tx_hash,
+                "enqueued": fault_enqueued,
                 "error": fault_bc_error,
             } if final_prediction == 1 else None,
         }
@@ -310,7 +297,7 @@ def get_prediction_trend(machine_id: int, days: int = 7):
             else:
                 continue
 
-            if datetime.combine(record_date, datetime.min.time()) < cutoff:
+            if datetime.combine(record_date, _MIDNIGHT) < cutoff:
                 continue
 
             date_str = record_date.isoformat()

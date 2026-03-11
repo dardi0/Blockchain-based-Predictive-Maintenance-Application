@@ -88,7 +88,7 @@ class TrainingConfig:
     MIN_PRECISION_THRESHOLD = 0.2  # Minimum %20 precision korunarak recall maksimize edilir
     
     # SMOTE (Synthetic Minority Oversampling Technique)
-    USE_SMOTE = True  # SMOTE kullanımını aktif/pasif eder
+    USE_SMOTE = False  # SMOTE kullanımını aktif/pasif eder
     SMOTE_RANDOM_STATE = 42  # SMOTE için random state
     SMOTE_K_NEIGHBORS = 5  # SMOTE k-neighbors parametresi
     
@@ -99,13 +99,11 @@ class BlockchainConfig:
     # Network ayarları
     DEFAULT_NETWORK = "ZKSYNC_ERA"
 
-    # Gas ayarları - Default limitler (dynamic estimation tercih edilir)
-    SENSOR_DATA_GAS_LIMIT = 800000
-    PREDICTION_GAS_LIMIT = 800000
+    # Gas ayarları
     SENSOR_DATA_GAS_PRICE_GWEI = 0.25
     PREDICTION_GAS_PRICE_GWEI = 0.25
 
-    # Yeni ZK kayıt işlemleri için gas limitleri
+    # ZK kayıt işlemleri için gas limitleri
     FAULT_RECORD_GAS_LIMIT    = 300000
     TRAINING_RECORD_GAS_LIMIT = 300000
     REPORT_RECORD_GAS_LIMIT   = 300000
@@ -116,10 +114,9 @@ class BlockchainConfig:
     CONTRACT_UPDATE_GAS_LIMIT = 1000000
     NODE_REGISTER_GAS_LIMIT = 500000
 
-    # Gas estimation ayarları
+    # Gas estimation — her zaman dinamik
     GAS_ESTIMATION_BUFFER = 1.2  # %20 buffer
-    GAS_PRICE_BUFFER = 1.1  # %10 buffer
-    USE_DYNAMIC_GAS_ESTIMATION = True  # True = estimate_gas kullan, False = hardcoded limit
+    GAS_PRICE_BUFFER = 1.1       # %10 buffer
 
     # Transaction ayarları
     TRANSACTION_TIMEOUT = 120
@@ -294,6 +291,23 @@ class DatabaseConfig:
     
     # Connection string for SQLAlchemy or other ORMs if needed
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# --- BATCH KONFİGÜRASYONU ---
+class BatchConfig:
+    """Toplu blockchain gönderim konfigürasyonu (%98 maliyet tasarrufu)
+
+    3 makine tipi (L/M/H) × 5 dakikada bir → saatte 36 kayıt
+    110 dakikada 66 kayıt birikir → 64 alınır, sıfır padding olmaz.
+    BATCH_MAX_SIZE=64 → CircuitType.BATCH_SENSOR devresini tam doldurur.
+    BATCH_CIRCUIT_SIZE=64 Circom sabiti — eksik slotlar 0 ile padding yapılır.
+    """
+    ENABLE_BATCH_MODE  = True   # Her zaman aktif — Chainlink + BatchSender ile çalışır
+    BATCH_INTERVAL     = int(os.getenv("BATCH_INTERVAL", "7200"))   # saniye (2 saat güvenlik ağı)
+    BATCH_MAX_SIZE     = int(os.getenv("BATCH_MAX_SIZE", "64"))     # Circom devresi tam dolumu
+    BATCH_MIN_SIZE     = int(os.getenv("BATCH_MIN_SIZE", "32"))     # Yarısı dolunca acil flush
+    BATCH_GAS_LIMIT    = int(os.getenv("BATCH_GAS_LIMIT", "800000"))
+    BATCH_CIRCUIT_SIZE = 64   # Circom fixed-size — 64'ten az kayıt 0 ile padlenir
+
 
 # --- CHAINLINK KONFİGÜRASYONU ---
 def _load_chainlink_automation_address() -> str:

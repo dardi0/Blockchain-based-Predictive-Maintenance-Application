@@ -72,14 +72,19 @@ try:
     configure_logging(log_file="automation_listener.log")
     HAS_OBSERVABILITY = True
 except ImportError:
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler('automation_listener.log', encoding='utf-8'),
-        ],
-    )
+    # Only configure if root logger has no handlers yet (prevents duplication when
+    # imported by api_main.py which may already have uvicorn logging set up)
+    if not logging.root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s %(levelname)-8s [%(name)s] %(message)s',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('automation_listener.log', encoding='utf-8'),
+            ],
+        )
+    else:
+        logging.root.setLevel(logging.INFO)
     HAS_OBSERVABILITY = False
     def set_log_context(**_kw): pass  # type: ignore
     def set_correlation_id(*_a, **_kw): pass  # type: ignore
@@ -137,6 +142,10 @@ class AutomationEventListener:
         # Blockchain handler (lazy loaded for ZK proof submission)
         self.blockchain_handler = None
 
+        # Batch sender (injected by api_main when batch mode is enabled)
+        self.batch_sender = None
+        self.last_batch_flush_block = 0
+
         # Resilience tracking
         self._consecutive_rpc_failures = 0
         self.MAX_RPC_FAILURES = 5
@@ -147,8 +156,7 @@ class AutomationEventListener:
             with open(DEPLOYMENT_INFO_PATH, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            logger.error(f"Deployment info not found at {DEPLOYMENT_INFO_PATH}")
-            sys.exit(1)
+            raise FileNotFoundError(f"Deployment info not found at {DEPLOYMENT_INFO_PATH}")
 
     def _load_contract_abi(self, contract_name: str) -> list:
         """Load contract ABI from artifacts."""
@@ -204,7 +212,7 @@ class AutomationEventListener:
             return False
 
     def _reconnect(self, max_attempts: int = 10):
-        """Reconnect to RPC with exponential backoff. Calls sys.exit after exhausting attempts."""
+        """Reconnect to RPC with exponential backoff. Raises RuntimeError after exhausting attempts."""
         self._consecutive_rpc_failures = 0
         for attempt in range(max_attempts):
             wait = min(2 ** attempt, 300)  # cap at 5 minutes
@@ -227,10 +235,10 @@ class AutomationEventListener:
                     extra={"event_type": "rpc_reconnect_failed"},
                 )
         logger.critical(
-            "Exhausted all reconnect attempts — exiting for process supervisor restart.",
+            "Exhausted all reconnect attempts — raising for process supervisor restart.",
             extra={"event_type": "rpc_disconnected"},
         )
-        sys.exit(1)
+        raise RuntimeError("AutomationEventListener: exhausted all RPC reconnect attempts")
 
     def connect(self):
         """Connect to zkSync Era and initialize contracts."""
@@ -251,10 +259,9 @@ class AutomationEventListener:
 
         logger.info(f"Connected! Chain ID: {self.w3.eth.chain_id}")
 
-        # Setup oracle account — missing key is unrecoverable, exit immediately
+        # Setup oracle account — missing key is unrecoverable
         if not ORACLE_PRIVATE_KEY:
-            logger.error("ORACLE_PRIVATE_KEY not set")
-            sys.exit(1)
+            raise EnvironmentError("ORACLE_PRIVATE_KEY env var not set — cannot initialize oracle account")
 
         self.oracle_account = Account.from_key(ORACLE_PRIVATE_KEY)
         logger.info(f"Oracle wallet: {self.oracle_account.address}")
@@ -275,11 +282,10 @@ class AutomationEventListener:
             oracle_address = os.getenv("BACKEND_ORACLE_ADDRESS")
 
         if not oracle_address:
-            logger.error(
+            raise ValueError(
                 "BackendOracleConsumer address not found. "
                 "Run deploy-backend-oracle.js or set BACKEND_ORACLE_ADDRESS env var."
             )
-            sys.exit(1)
 
         # Initialize oracle contract
         if oracle_abi:
@@ -289,8 +295,7 @@ class AutomationEventListener:
             )
             logger.info(f"BackendOracleConsumer: {oracle_address}")
         else:
-            logger.error("BackendOracleConsumer ABI not found")
-            sys.exit(1)  # Unrecoverable config error
+            raise RuntimeError("BackendOracleConsumer ABI not found — unrecoverable config error")
 
         # Initialize automation contract
         if automation_address and automation_abi:
@@ -338,8 +343,9 @@ class AutomationEventListener:
             self.node_id = None
             logger.warning("AccessControlRegistry not found, heartbeat disabled")
 
-        # Set starting block
-        self.last_processed_block = self.w3.eth.block_number - 100
+        # Set starting block — only look back a few blocks to handle brief restarts
+        # without replaying all events accumulated during longer downtime periods.
+        self.last_processed_block = self.w3.eth.block_number - 5
         self.last_maintenance_block = self.last_processed_block
         logger.info(f"Starting from block: {self.last_processed_block}")
 
@@ -486,24 +492,22 @@ class AutomationEventListener:
                 gas_price = self.w3.eth.gas_price
                 gas_price = int(gas_price * BlockchainConfig.GAS_PRICE_BUFFER)
 
-                # Dynamic gas estimation with fallback
-                fallback_gas = BlockchainConfig.PREDICTION_GAS_LIMIT
-                if BlockchainConfig.USE_DYNAMIC_GAS_ESTIMATION:
-                    try:
-                        call_data = self.oracle_contract.functions.fulfillPrediction(
-                            request_id, machine_id, prediction, confidence, data_hash
-                        )
-                        estimated = self.w3.eth.estimate_gas({
-                            'from': self.oracle_account.address,
-                            'to': self.oracle_contract.address,
-                            'data': call_data._encode_transaction_data()
-                        })
-                        gas_limit = int(estimated * BlockchainConfig.GAS_ESTIMATION_BUFFER)
-                    except Exception as est_err:
-                        logger.debug(f"Gas estimation failed, using fallback: {est_err}")
-                        gas_limit = fallback_gas
-                else:
-                    gas_limit = fallback_gas
+                # Dynamic gas estimation
+                try:
+                    call_data = self.oracle_contract.functions.fulfillPrediction(
+                        request_id, machine_id, prediction, confidence, data_hash
+                    )
+                    estimated = self.w3.eth.estimate_gas({
+                        'from': self.oracle_account.address,
+                        'to': self.oracle_contract.address,
+                        'data': call_data._encode_transaction_data()
+                    })
+                    gas_limit = int(estimated * BlockchainConfig.GAS_ESTIMATION_BUFFER)
+                    logger.debug(f"⛽ Dynamic gas (fulfill): {estimated} → {gas_limit}")
+                except Exception as est_err:
+                    logger.warning(f"Gas estimation failed, using safe default: {est_err}")
+                    gas_limit = 300000  # fulfillPrediction için güvenli alt sınır
+
 
                 tx = self.oracle_contract.functions.fulfillPrediction(
                     request_id,
@@ -685,7 +689,9 @@ class AutomationEventListener:
             new_record = {
                 'machine_id':    machine_id,
                 'machine_type':  machine_type,
-                'timestamp':     int(time.time()),
+                # Chainlink event timestamp kullan — API kapalıyken birikmiş
+                # event'lerin zaman damgaları doğru aralıkta görünür.
+                'timestamp':     int(timestamp),
                 'air_temp':      sensor_values['air_temp'],
                 'process_temp':  sensor_values['process_temp'],
                 'rotation_speed':sensor_values['rotation_speed'],
@@ -776,16 +782,23 @@ class AutomationEventListener:
             logger.info(f"  Prediction: {'FAILURE' if prediction_value == 1 else 'NORMAL'}")
             logger.info(f"  Confidence: {confidence / 100}%")
 
-            # Only generate ZK proof for failure predictions
+            # Only process failure predictions
             if prediction_value == 1:
-                set_log_context(
-                    machine_id=pred_machine_id,
-                    event_type="zk_proof_start",
-                    circuit_type="MAINTENANCE",
-                )
-                self._generate_and_submit_zk_proof(pred_machine_id, prediction_id, pred_data)
+                if self.db_manager:
+                    self.db_manager.enqueue_fault_for_batch(
+                        machine_id=pred_machine_id,
+                        prediction=int(prediction_value),
+                        prediction_prob=confidence / 10000.0,
+                        recorded_by='automation',
+                    )
+                    logger.info(
+                        f"  Fault enqueued for machine {pred_machine_id} (BatchSender halleder)",
+                        extra={"event_type": "fault_enqueued", "machine_id": pred_machine_id},
+                    )
+                else:
+                    logger.warning(f"  db_manager yok — arıza kaydı düşürüldü (machine={pred_machine_id})")
             else:
-                logger.info("  Normal prediction, no ZK proof needed")
+                logger.info("  Normal prediction, no action needed")
 
         except Exception as e:
             logger.error(f"Error getting prediction details: {e}")
@@ -895,6 +908,9 @@ class AutomationEventListener:
             # Poll MaintenanceTaskRequested events from ChainlinkPdMAutomation
             self._poll_maintenance_events(current_block)
 
+            # Poll BatchFlushRequested events (batch mode only, no-op if batch_sender not set)
+            self._poll_batch_flush_events(current_block)
+
             # Reset failure counter on any successful poll
             self._consecutive_rpc_failures = 0
 
@@ -910,7 +926,13 @@ class AutomationEventListener:
                 ) from e
 
     def _poll_prediction_events(self, current_block: int):
-        """Poll for PredictionRequested events."""
+        """Poll for PredictionRequested events.
+
+        Birikmiş tüm event'ler işlenir; her kaydın timestamp'i
+        event['args']['timestamp'] (blockchain zamanı) olarak atanır.
+        Böylece API kapalıyken gelen event'ler doğru zaman damgalarıyla
+        kaydedilir ve aralıkları korunur.
+        """
         if not self.oracle_contract:
             return
 
@@ -922,7 +944,9 @@ class AutomationEventListener:
 
             for event in events:
                 try:
-                    logger.info(f"Found PredictionRequested event in block {event['blockNumber']}")
+                    logger.info(
+                        f"Found PredictionRequested event in block {event['blockNumber']}"
+                    )
                     self.process_prediction_request(event)
                 except Exception as e:
                     logger.warning(f"Error processing prediction event: {e}")
@@ -958,6 +982,49 @@ class AutomationEventListener:
         except Exception as e:
             logger.debug(f"Maintenance event polling: {e}")
             self.last_maintenance_block = current_block
+
+    def _poll_batch_flush_events(self, current_block: int):
+        """Poll for BatchFlushRequested events — calls batch_sender.force_flush() when triggered."""
+        if not self.automation_contract or not self.batch_sender:
+            return
+
+        try:
+            events = self.automation_contract.events.BatchFlushRequested.get_logs(
+                from_block=self.last_batch_flush_block + 1,
+                to_block=current_block
+            )
+
+            for event in events:
+                try:
+                    pending_count = event['args']['pendingCount']
+                    logger.info(
+                        f"BatchFlushRequested (block {event['blockNumber']}), "
+                        f"pending={pending_count} — triggering force_flush()",
+                        extra={"event_type": "batch_flush_triggered", "pending_count": pending_count},
+                    )
+                    result = self.batch_sender.force_flush()
+                    if result.get('success'):
+                        logger.info(
+                            f"Batch flush succeeded: tx={result.get('tx_hash', 'N/A')}",
+                            extra={"event_type": "batch_flush_success",
+                                   "tx_hash": result.get('tx_hash')},
+                        )
+                    elif result.get('error') == 'flush_already_in_progress':
+                        logger.info("Batch flush already in progress — skipping duplicate event")
+                    else:
+                        logger.warning(
+                            f"Batch flush result: {result}",
+                            extra={"event_type": "batch_flush_failed"},
+                        )
+                except Exception as e:
+                    logger.error(f"Error triggering batch flush from event: {e}")
+                    continue
+
+            self.last_batch_flush_block = current_block
+
+        except Exception as e:
+            logger.debug(f"Batch flush event polling: {e}")
+            self.last_batch_flush_block = current_block
 
     def _heartbeat_loop(self):
         """Background thread sending heartbeat every 30 minutes."""

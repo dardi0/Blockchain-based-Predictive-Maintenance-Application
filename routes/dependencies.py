@@ -32,7 +32,15 @@ def get_db_manager() -> PdMDatabaseManager:
     return _db_manager
 
 # --- JWT Token System ---
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+_jwt_secret_env = os.getenv("JWT_SECRET")
+if not _jwt_secret_env:
+    _jwt_secret_env = secrets.token_hex(32)
+    logger.warning(
+        "JWT_SECRET env var not set — a random secret was generated. "
+        "All sessions will be invalidated on every restart. "
+        "Set JWT_SECRET in your .env file for persistent sessions."
+    )
+JWT_SECRET = _jwt_secret_env
 JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 active_tokens: Dict[str, Dict[str, Any]] = {}
 
@@ -48,7 +56,8 @@ def create_auth_token(address: str, role: str) -> str:
         "role": role,
         "expires_at": expires_at
     }
-    _cleanup_expired_tokens()
+    if len(active_tokens) > 100:
+        _cleanup_expired_tokens()
     return token
 
 def verify_auth_token(token: str) -> Optional[Dict[str, Any]]:
@@ -81,7 +90,8 @@ def verify_auth_token(token: str) -> Optional[Dict[str, Any]]:
             if len(data_parts) >= 3:
                 address, role, timestamp = data_parts[0], data_parts[1], int(data_parts[2])
                 if time.time() - timestamp < JWT_EXPIRY_HOURS * 3600:
-                    return {"address": address, "role": role}
+                    expires_at = datetime.fromtimestamp(timestamp) + timedelta(hours=JWT_EXPIRY_HOURS)
+                    return {"address": address, "role": role, "expires_at": expires_at}
     except Exception:
         pass
 
@@ -138,14 +148,32 @@ def get_current_user(
 def require_role(*allowed_roles, check_blockchain: bool = False):
     """
     Belirli rollere sahip kullanıcı gerektirir.
+    Bearer token veya x-wallet-address header'ından kimlik doğrular.
 
     Args:
         allowed_roles: İzin verilen roller
         check_blockchain: Blockchain kontrolü yap (şu an devre dışı)
     """
-    async def _require_role(x_wallet_address: str = Header(...)):
+    async def _require_role(
+        authorization: Optional[str] = Header(None),
+        x_wallet_address: Optional[str] = Header(None, alias="x-wallet-address"),
+    ):
+        # Bearer token öncelikli
+        address: Optional[str] = None
+        if authorization:
+            token_data = verify_auth_token(authorization)
+            if token_data:
+                address = token_data.get("address")
+
+        # Fallback: x-wallet-address header
+        if not address and x_wallet_address:
+            address = x_wallet_address
+
+        if not address:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
         db = get_db_manager()
-        user = db.get_user(x_wallet_address)
+        user = db.get_user(address)
 
         if not user:
             raise HTTPException(status_code=401, detail="Unauthorized")

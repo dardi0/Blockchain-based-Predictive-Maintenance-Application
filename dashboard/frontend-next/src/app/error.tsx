@@ -53,7 +53,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={reset}
-                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-highlight)] text-white font-medium rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 transition-all"
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--accent-primary)] text-white font-medium rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 hover:opacity-90 transition-all"
                         >
                             <RefreshCw size={18} />
                             Try Again

@@ -10,6 +10,8 @@
         "deploy:full:old": "node scripts/deploy_full_system.js",
         "deploy:fees": "hardhat run scripts/deploy_with_fees.js --network zkSyncSepolia",
         "register:node": "hardhat run register_node.js --network zkSyncSepolia",
+        "register:sa": "node scripts/register_sa_via_owner.js",
+        "vk:setup": "node scripts/setup_batch_vk.js",
         "configure:access": "hardhat run configure_access.js --network zkSyncSepolia",
         "test": "hardhat test",
         "clean": "hardhat clean",

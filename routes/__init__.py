@@ -17,6 +17,7 @@ from .automation import router as automation_router
 from .notifications import router as notifications_router
 from .reports import router as reports_router
 from .training import router as training_router
+from .batch import router as batch_router
 
 __all__ = [
     'auth_router',
@@ -31,4 +32,5 @@ __all__ = [
     'notifications_router',
     'reports_router',
     'training_router',
+    'batch_router',
 ]

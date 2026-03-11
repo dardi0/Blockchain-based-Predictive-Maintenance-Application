@@ -73,6 +73,7 @@ const CircuitType = {
     FAULT_RECORD: 4,
     TRAINING_RECORD: 5,
     REPORT_RECORD: 6,
+    BATCH_SENSOR: 7,
 };
 
 // ============================================================
@@ -271,22 +272,47 @@ async function phase4_register_nodes(acAddress, acAbi, provider, ownerWallet, fa
             try {
                 const aaArtifact = await hre.artifacts.readArtifact('SessionKeyAccount');
                 const bytecodeHash = utils.hashBytecode(aaArtifact.bytecode);
-                nodeIdentity = utils.create2Address(await factoryContract.getAddress(), bytecodeHash, salt, ethers.AbiCoder.defaultAbiCoder().encode(['address'], [address]));
+                const factoryAddr = await factoryContract.getAddress();
+
+                // Compute deterministic create2 address
+                nodeIdentity = utils.create2Address(
+                    factoryAddr,
+                    bytecodeHash,
+                    salt,
+                    ethers.AbiCoder.defaultAbiCoder().encode(['address'], [address])
+                );
                 smartAccountAddr = nodeIdentity;
                 console.log(inf(`${label} deterministik Smart Account adresi: ${nodeIdentity}`));
 
-                // Cüzdanı oluştur
-                const txDeploy = await factoryContract.deployAccount(salt, address, {
-                    gasLimit: 5_000_000,
-                    customData: {
-                        factoryDeps: [aaArtifact.bytecode],
-                    }
-                });
-                await txDeploy.wait();
-                console.log(ok(`${label} Smart Account ağa deploy edildi.`));
-            } catch (err) {
-                console.error(err(`${label} Smart Account deploy ERROR (Reason: ${err.reason || err.message})`));
-                throw err; // DO NOT swallow the error, we need the deployment to fail if SA isn't created
+                // Check if already deployed (idempotent re-runs)
+                const existingCode = await provider.getCode(nodeIdentity);
+                if (existingCode && existingCode !== '0x') {
+                    console.log(ok(`${label} Smart Account zaten deploy edilmiş — atlanıyor.`));
+                } else {
+                    // Deploy via ownerWallet.sendTransaction so zkSync type-113 customData
+                    // (factoryDeps) is properly forwarded — plain ethers Contract drops it.
+                    const factoryIface = new ethers.Interface([
+                        'function deployAccount(bytes32 salt, address owner) returns (address)',
+                    ]);
+                    const calldata = factoryIface.encodeFunctionData('deployAccount', [salt, address]);
+                    const txDeploy = await ownerWallet.sendTransaction({
+                        to: factoryAddr,
+                        data: calldata,
+                        gasLimit: 5_000_000,
+                        customData: {
+                            factoryDeps: [aaArtifact.bytecode],
+                            gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+                        },
+                    });
+                    await txDeploy.wait();
+                    console.log(ok(`${label} Smart Account ağa deploy edildi.`));
+                }
+            } catch (deployErr) {
+                console.log(wrn(`${label} Smart Account deploy başarısız — regular address ile devam ediliyor.`));
+                console.log(wrn(`   Hata: ${deployErr.reason || deployErr.shortMessage || deployErr.message?.split('\n')[0]}`));
+                // Fallback: use the EOA address instead of smart account
+                nodeIdentity = address;
+                smartAccountAddr = null;
             }
         }
 
@@ -441,7 +467,7 @@ async function phase5_setup_circuits() {
 // FAZ 6 — VK YÜKLEME (CircuitType 4, 5, 6)
 // ============================================================
 async function phase6_upload_vks(verifierAddress, verifierAbi, wallet) {
-    console.log(hdr('FAZ 6: ZK VK ON-CHAIN YÜKLEME (CircuitType 4,5,6)'));
+    console.log(hdr('FAZ 6: ZK VK ON-CHAIN YÜKLEME (CircuitType 4,5,6,7)'));
 
     const verContract = new ethers.Contract(verifierAddress, verifierAbi, wallet);
 
@@ -449,6 +475,7 @@ async function phase6_upload_vks(verifierAddress, verifierAbi, wallet) {
         { type: CircuitType.FAULT_RECORD, name: 'FAULT_RECORD', zkey: 'fault_record_proof.zkey' },
         { type: CircuitType.TRAINING_RECORD, name: 'TRAINING_RECORD', zkey: 'training_record_proof.zkey' },
         { type: CircuitType.REPORT_RECORD, name: 'REPORT_RECORD', zkey: 'report_record_proof.zkey' },
+        { type: CircuitType.BATCH_SENSOR, name: 'BATCH_SENSOR', zkey: 'batch_sensor_proof.zkey' },
     ];
 
     for (const { type, name, zkey } of circuitMap) {

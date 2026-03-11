@@ -258,7 +258,7 @@ function AddTaskModal({ newTask, onChange, onSubmit, onClose }: AddTaskModalProp
                     </button>
                     <button
                         onClick={onSubmit}
-                        className="flex-1 py-2 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-highlight)] text-white rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 transition-all"
+                        className="flex-1 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 hover:opacity-90 transition-all"
                     >
                         Add Task
                     </button>
@@ -335,7 +335,7 @@ export default function MaintenancePage() {
                 </div>
                 <button
                     onClick={() => setUI(prev => ({ ...prev, showAddModal: true }))}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-highlight)] text-white rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:shadow-lg hover:shadow-[var(--accent-primary)]/25 hover:opacity-90 transition-all"
                 >
                     <Plus size={18} /> Add Task
                 </button>

@@ -23,6 +23,7 @@ import time
 import logging
 import queue
 import threading
+import hashlib
 import numpy as np
 import tensorflow as tf
 import joblib
@@ -96,6 +97,7 @@ async def lifespan(app: FastAPI):
 
     _init_blockchain_handler()
     _start_monitor()
+    _init_batch_sender()
 
     route_deps.set_blockchain_handler(blockchain_handler)
 
@@ -116,6 +118,10 @@ async def lifespan(app: FastAPI):
     )
 
     if _init_automation_listener():
+        # Wire batch_sender into listener so BatchFlushRequested events trigger force_flush()
+        if batch_sender is not None:
+            automation_listener.batch_sender = batch_sender
+            print("🔗 BatchSender wired into AutomationEventListener")
         await start_automation_listener()
 
     yield  # Uygulama bu noktada çalışır
@@ -124,6 +130,7 @@ async def lifespan(app: FastAPI):
     _stop_blockchain_workers()
     _stop_monitor()
     _stop_automation_listener()
+    _stop_batch_sender()
 
 
 # --- FastAPI Uygulaması ---
@@ -150,7 +157,10 @@ logger = logging.getLogger(__name__)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     error_details = exc.errors()
-    logger.warning("Validation error", extra={"detail": str(error_details)})
+    logger.warning(
+        "Validation error [%s %s] — %s",
+        request.method, request.url.path, error_details
+    )
     return JSONResponse(
         status_code=422,
         content={"detail": error_details, "body": error_details},
@@ -193,6 +203,9 @@ async def rate_limit_middleware(request: Request, call_next):
     window_start = current_time - RATE_LIMIT_WINDOW
 
     rate_limit_store[client_ip] = [t for t in rate_limit_store[client_ip] if t > window_start]
+    # Evict immediately when the window clears — prevents unbounded dict growth
+    if not rate_limit_store[client_ip]:
+        del rate_limit_store[client_ip]
 
     if len(rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
         return JSONResponse(
@@ -208,7 +221,6 @@ async def rate_limit_middleware(request: Request, call_next):
 # Suppress asyncio ConnectionResetError (WinError 10054) on Windows
 # This is a harmless error when clients disconnect abruptly
 if os.name == 'nt':
-    import asyncio
     import functools
     
     def silence_event_loop_closed(func):
@@ -236,6 +248,9 @@ blockchain_enabled = False
 BLOCKCHAIN_WORKER_COUNT = int(os.getenv("BLOCKCHAIN_WORKERS", "1"))
 BLOCKCHAIN_QUEUE_MAX = int(os.getenv("BLOCKCHAIN_QUEUE_MAX", "256"))
 
+# Batch sender — her zaman aktif, startup'ta başlatılır
+batch_sender: Optional[Any] = None
+
 # Automation listener globals
 automation_listener: Optional[Any] = None
 automation_listener_task: Optional[asyncio.Task] = None
@@ -245,13 +260,6 @@ feature_names = [
     'Air temperature [K]', 'Process temperature [K]', 'Rotational speed [rpm]',
     'Torque [Nm]', 'Tool wear [min]', 'Type_H', 'Type_L', 'Type_M'
 ]
-
-# --- Logging Ayarları ---
-logging.basicConfig(
-    level=logging.WARNING,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # --- Blockchain Yardımcıları ---
 def _init_blockchain_handler():
@@ -333,24 +341,47 @@ def _blockchain_worker():
                 blockchain_job_queue.task_done()
 
 
+def _init_batch_sender():
+    """BatchSender'ı başlat."""
+    global batch_sender
+    try:
+        from config import BatchConfig
+        if blockchain_handler is None:
+            print("⚠️ Batch mode aktif ama blockchain_handler yok; batch sender başlatılamadı")
+            return
+        from blockchain_client.batch_sender import BatchSender
+        zk = getattr(blockchain_handler, 'zk_proof_generator', None)
+        if zk is None:
+            print("⚠️ Batch mode aktif ama zk_proof_generator bulunamadı")
+            return
+        batch_sender = BatchSender(db_manager, blockchain_handler, zk)
+        batch_sender.start()
+        # routes/batch.py'ye referansı aktar
+        from routes import batch as batch_route
+        batch_route.set_batch_sender(batch_sender)
+        print(f"✅ BatchSender başlatıldı (interval={BatchConfig.BATCH_INTERVAL}s)")
+    except Exception as exc:
+        print(f"⚠️ BatchSender başlatma hatası: {exc}")
+
+
+def _stop_batch_sender():
+    global batch_sender
+    if batch_sender is not None:
+        try:
+            batch_sender.stop()
+        except Exception:
+            pass
+        batch_sender = None
+
+
 def _process_blockchain_job(record_id: int, payload: Dict[str, Any]):
     try:
-        print(f"🔄 Processing blockchain job for record #{record_id}...")
-        result = blockchain_handler.submit_sensor_data_hybrid(payload, pdm_id=record_id)
-        if isinstance(result, dict) and result.get('success'):
-            tx_hash = result.get('tx_hash')
-            proof_id = result.get('blockchain_proof_id')
-            db_manager.update_blockchain_info(
-                record_id=record_id,
-                success=bool(result.get('blockchain_submitted')),
-                tx_hash=tx_hash,
-                proof_id=proof_id,
-                offchain_hash=result.get('zk_proof_hash')
-            )
-            print(f"✅ Blockchain submission completed (record #{record_id}).")
-        else:
-            error_msg = result.get('error') if isinstance(result, dict) else 'Unknown error'
-            print(f"⚠️ Blockchain submission failed for record #{record_id}: {error_msg}")
+        # Batch mod: chain_hash hesapla ve DB'ye yaz — TX + ZK proof BatchSender halleder
+        data_hash = payload.get('data_hash', '')
+        chain_hash_val = hashlib.sha256(
+            f"{data_hash}{record_id}".encode()
+        ).hexdigest()
+        db_manager.update_sensor_chain_hash(record_id, '0x' + chain_hash_val)
     except Exception as exc:
         print(f"❌ Blockchain job crashed for record #{record_id}: {exc}")
 
@@ -379,10 +410,6 @@ def _init_automation_listener():
 
     if not HAS_AUTOMATION_LISTENER:
         print("⚠️ Automation listener module not available")
-        return False
-
-    if not AUTOMATION_ENABLED:
-        print("ℹ️ Automation listener disabled via AUTOMATION_LISTENER_ENABLED=false")
         return False
 
     try:
@@ -458,6 +485,7 @@ async def trigger_manual_prediction(wallet_address: str = None):
 # --- Transaction Monitor ---
 monitor_thread = None
 monitor_stop_event = threading.Event()
+_monitor_confirmed_hashes: Set[str] = set()  # in-memory dedup across polls
 
 
 def _start_monitor():
@@ -475,7 +503,6 @@ def _stop_monitor():
 
 def _monitor_loop():
     logger.info("🕵️ Transaction Monitor started")
-    print("🕵️ Transaction Monitor started")
 
     RPC_URL = os.getenv("ZKSYNC_SEPOLIA_RPC", "https://sepolia.era.zksync.dev")
 
@@ -488,10 +515,6 @@ def _monitor_loop():
 
 
 def _check_pending_transactions(rpc_url):
-    if not db_manager or not hasattr(db_manager, '_connected') or not getattr(db_manager, '_connected', False):
-        # Fallback: try get_connection directly
-        pass
-    
     conn = db_manager.get_connection()
     if not conn:
         return
@@ -530,6 +553,11 @@ def _check_and_update_tx(record, rpc_url, is_prediction):
     if not tx_hash or len(tx_hash) < 10:
         return
 
+    # Skip if already confirmed this session (prevents duplicate prints when DB update is slow)
+    dedup_key = f"{'p' if is_prediction else 's'}:{tx_hash}"
+    if dedup_key in _monitor_confirmed_hashes:
+        return
+
     try:
         payload = {
             "jsonrpc": "2.0",
@@ -556,14 +584,20 @@ def _check_and_update_tx(record, rpc_url, is_prediction):
             new_proof_id = block_num * 10000 + tx_index
 
             print(f"✅ TX Confirmed ({'Prediction' if is_prediction else 'Sensor'}): {tx_hash} -> ProofID: {new_proof_id}")
+            _monitor_confirmed_hashes.add(dedup_key)
+            # Cap the set to prevent unbounded growth over long uptime
+            if len(_monitor_confirmed_hashes) > 10_000:
+                _monitor_confirmed_hashes.clear()
 
-            db_manager.update_blockchain_info(
+            ok = db_manager.update_blockchain_info(
                 record_id=record['id'],
                 success=True,
                 tx_hash=tx_hash,
                 proof_id=new_proof_id,
                 is_prediction=is_prediction
             )
+            if not ok:
+                logger.error(f"proof_id DB update failed for TX {tx_hash[:16]}… (record_id={record['id']})")
 
             user_addr = record.get('recorded_by') or "Unknown"
             if user_addr and user_addr != "Unknown":
@@ -593,6 +627,7 @@ from routes import (
     notifications_router,
     reports_router,
     training_router,
+    batch_router,
 )
 
 # Import dependencies module to set shared references
@@ -611,6 +646,7 @@ app.include_router(automation_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(training_router)
+app.include_router(batch_router)
 
 
 # --- General Endpoints (kept in main) ---

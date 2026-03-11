@@ -305,7 +305,7 @@ def create_maintenance_task_automated(
 
 
 @router.get("/status")
-def get_automation_status(_: bool = Depends(verify_automation_key_optional)):
+def get_automation_status():
     """Returns current automation status and statistics."""
     db = get_db_manager()
 
@@ -340,7 +340,7 @@ def get_automation_status(_: bool = Depends(verify_automation_key_optional)):
             "pending_predictions": pending_predictions,
             "automated_last_24h": automated_last_24h,
             "failures_detected": failures_detected,
-            "automation_enabled": bool(CHAINLINK_AUTOMATION_API_KEY),
+            "automation_enabled": _automation_enabled,
             "timestamp": int(time.time())
         }
 
